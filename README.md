@@ -360,7 +360,7 @@
 
 - The response will contain only one object, encapsulated in the `data` variable
 
-# `FileUploadController` and `ImageUploadController`:
+# `FileUploadController`/`ImageUploadController`:
 Add the following code in the `api.php` in the routes folder:
 ```php
 $api->group(

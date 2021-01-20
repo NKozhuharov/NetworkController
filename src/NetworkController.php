@@ -7,17 +7,22 @@ use Dingo\Api\Http\Response;
 use Dingo\Api\Routing\Helpers;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Bus\DispatchesJobs;
+use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller as BaseController;
 use League\Fractal\TransformerAbstract;
 
-abstract class NetworkController extends Controller
+abstract class NetworkController extends BaseController
 {
     use Helpers;
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
     /**
      * The location of all models
      */
-    const MODELS_DIR = 'App\Models\\';
+    const MODELS_DIR = '\App\Models\\';
 
     private const LIMIT_ALL = 'all';
 

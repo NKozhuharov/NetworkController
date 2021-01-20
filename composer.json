@@ -2,8 +2,23 @@
   "name": "nevestul4o/network-controller",
   "license": "MIT",
   "type": "library",
-  "keywords": ["laravel","network","controller","api", "dingo"],
-  "description": "My Network Controller for laravel, designed to work with dingo/api",
+  "keywords": [
+    "laravel",
+    "library",
+    "api",
+    "dingo",
+    "images",
+    "files",
+    "upload"
+  ],
+  "description": "A basic API controller set for laravel, designed to work with dingo/api",
+  "authors": [
+    {
+      "name": "Nikola Kozhuharov",
+      "email": "nikolakozhuharovv@gmail.com",
+      "homepage": "https://github.com/NKozhuharov"
+    }
+  ],
   "require": {
     "php": "^7.2.5",
     "fideloper/proxy": "^4.2",

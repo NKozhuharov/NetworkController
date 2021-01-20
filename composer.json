@@ -1,5 +1,6 @@
 {
   "name": "nevestul4o/network-controller",
+  "license": "MIT",
   "type": "library",
   "keywords": ["laravel","network","controller","api"],
   "description": "My Network Controller for laravel",

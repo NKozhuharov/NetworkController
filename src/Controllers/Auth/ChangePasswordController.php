@@ -3,6 +3,7 @@
 namespace Nevestul4o\NetworkController\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Models\Transformers\UserTransformer;
 use App\Http\Models\User;
 use Dingo\Api\Http\Response;
 use Dingo\Api\Routing\Helpers;
@@ -11,7 +12,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Nevestul4o\NetworkController\Models\BaseModel;
-use Nevestul4o\NetworkController\Models\Transformers\UserTransformer;
 
 class ChangePasswordController extends Controller
 {

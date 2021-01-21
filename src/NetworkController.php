@@ -29,7 +29,6 @@ abstract class NetworkController extends BaseController
     private const ORDER_BY_PARAM = 'orderby';
     private const SORT_PARAM = 'sort';
     private const QUERY_PARAM = 'query';
-    private const SEARCH_PARAM = 'search';
     private const FILTERS_PARAM = 'filters';
     private const RESOLVE_PARAM = 'resolve';
     private const SHOW_META_PARAM = 'showMeta';
@@ -114,9 +113,6 @@ abstract class NetworkController extends BaseController
     /** @var array */
     protected $queryAble;
 
-    /** @var array */
-    protected $searchAble;
-
     /**
      * Create a new controller instance.
      */
@@ -132,7 +128,6 @@ abstract class NetworkController extends BaseController
             $this->filterAble = $this->model->getFilterAble();
             $this->resolveAble = $this->model->getResolveAble();
             $this->queryAble = $this->model->getQueryAble();
-            $this->searchAble = $this->model->getSearchAble();
 
             $this->getItemsPerPageFromGet();
 
@@ -237,20 +232,19 @@ abstract class NetworkController extends BaseController
     {
         $items = $this->model;
         if ($request->filled(self::QUERY_PARAM) && !empty($this->queryAble) && is_array($this->queryAble)) {
-            /** @var Model $searchIndex */
             $items = $items->where(
                 function ($query) use ($request) {
-                    $searchWord = $request->get(self::QUERY_PARAM);
+                    $queryWord = $request->get(self::QUERY_PARAM);
                     foreach ($this->queryAble as $column => $operators) {
                         if (method_exists($this->model, $column) && in_array($column, $this->model->getWith())) {
                             foreach ($this->model->{$column}()->getRelated()->getQueryAble() as $relatedQueryableKey => $relatedQueryableOperators) {
                                 $query->orWhereHas(
                                     $column,
-                                    function ($q) use ($relatedQueryableKey, $relatedQueryableOperators, $searchWord) {
+                                    function ($q) use ($relatedQueryableKey, $relatedQueryableOperators, $queryWord) {
                                         $q->where(
                                             $relatedQueryableKey,
                                             'LIKE',
-                                            $this->getFilterLikeSearchWordValue($searchWord, $relatedQueryableOperators)
+                                            $this->getFilterLikeSearchWordValue($queryWord, $relatedQueryableOperators)
                                         );
                                     }
                                 );
@@ -259,30 +253,11 @@ abstract class NetworkController extends BaseController
                             $query->orWhere(
                                 $column,
                                 'LIKE',
-                                $this->getFilterLikeSearchWordValue($searchWord, $operators)
+                                $this->getFilterLikeSearchWordValue($queryWord, $operators)
                             );
                         }
                     }
                 });
-        }
-
-        if ($request->filled(self::SEARCH_PARAM) && !empty($this->searchAble)) {
-            /** @var Model $searchIndex */
-            $queryParams = $request->get(self::SEARCH_PARAM);
-            if (is_array($queryParams)) {
-                foreach ($queryParams as $column => $value) {
-                    if (!in_array($column, $this->searchAble)) {
-                        continue;
-                    }
-                    $items = $items->where(
-                        function ($query) use ($column, $value) {
-                            if (!strstr($value, '%')) {
-                                $value = "%{$value}%";
-                            }
-                            $query->orWhere($column, 'LIKE', $value);
-                        });
-                }
-            }
         }
 
         // Set default order
@@ -364,7 +339,6 @@ abstract class NetworkController extends BaseController
             $response->addMeta(self::ORDER_BY_PARAM, !empty($this->orderAble) ? $this->orderAble : [])
                 ->addMeta(self::FILTERS_PARAM, !empty($this->filterAble) ? $this->filterAble : [])
                 ->addMeta(self::QUERY_PARAM, !empty($this->queryAble) ? $this->queryAble : [])
-                ->addMeta(self::SEARCH_PARAM, !empty($this->searchAble) ? $this->searchAble : [])
                 ->addMeta(self::RESOLVE_PARAM, !empty($this->resolveAble) ? $this->resolveAble : []);
         }
 

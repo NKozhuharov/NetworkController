@@ -22,7 +22,7 @@ abstract class NetworkController extends BaseController
     /**
      * The location of all models
      */
-    const MODELS_DIR = '\App\Models\\';
+    const MODELS_DIR = '\App\Http\Models\\';
 
     private const LIMIT_ALL = 'all';
 

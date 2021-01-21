@@ -3,7 +3,7 @@
 namespace Nevestul4o\NetworkController\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\Transformers\UserTransformer;
+use App\Http\Models\Transformers\UserTransformer;
 use Dingo\Api\Http\Response;
 use Dingo\Api\Routing\Helpers;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;

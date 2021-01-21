@@ -2,7 +2,6 @@
 
 namespace Nevestul4o\NetworkController;
 
-use App\Models\_Model as Model;
 use Dingo\Api\Http\Response;
 use Dingo\Api\Routing\Helpers;
 use Exception;
@@ -13,6 +12,7 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
 use League\Fractal\TransformerAbstract;
+use Nevestul4o\NetworkController\Models\BaseModel;
 
 abstract class NetworkController extends BaseController
 {
@@ -54,7 +54,7 @@ abstract class NetworkController extends BaseController
     /**
      * The full path to the model
      *
-     * @var Model
+     * @var BaseModel
      */
     protected $model;
 

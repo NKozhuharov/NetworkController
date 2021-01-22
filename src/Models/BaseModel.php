@@ -123,6 +123,26 @@ abstract class BaseModel extends Model
     }
 
     /**
+     * Adds a new relation to the relation list
+     *
+     * @param string $relation - the new relation to add
+     */
+    public function addToWith(string $relation)
+    {
+        $this->with[] = $relation;
+    }
+
+    /**
+     * Removes an existing relation to the relation list
+     *
+     * @param string $key
+     */
+    public function removeWith(string $key)
+    {
+        unset($this->with[$key]);
+    }
+
+    /**
      * Gets an array of the fields, related to the object.
      *
      * Fixed to work alongside the with() and without() eager loading methods

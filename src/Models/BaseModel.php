@@ -73,14 +73,6 @@ abstract class BaseModel extends Model
     protected $queryAble = [];
 
     /**
-     * @return array
-     */
-    public function getQueryAble(): array
-    {
-        return $this->queryAble;
-    }
-
-    /**
      * A quick method to get table names for migrations
      *
      * @return mixed
@@ -101,9 +93,18 @@ abstract class BaseModel extends Model
     /**
      * @return array
      */
+    public function getQueryAble(): array
+    {
+        return $this->queryAble ?? [];
+    }
+
+
+    /**
+     * @return array
+     */
     public function getOrderAble()
     {
-        return $this->orderAble;
+        return $this->orderAble ?? [];
     }
 
     /**
@@ -111,7 +112,7 @@ abstract class BaseModel extends Model
      */
     public function getFilterAble()
     {
-        return $this->filterAble;
+        return $this->filterAble ?? [];
     }
 
     /**

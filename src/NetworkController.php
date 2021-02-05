@@ -93,10 +93,9 @@ abstract class NetworkController extends BaseController
      */
     protected $withoutRelationInsert = FALSE;
 
-    /**
-     * @var array
-     */
-    protected $defaultOrder = ['id', self::SORT_DESC];
+    protected $defaultOrder = BaseModel::F_ID;
+
+    protected $defaultSort = self::SORT_DESC;
 
     /**
      * @var array
@@ -200,7 +199,7 @@ abstract class NetworkController extends BaseController
      * @param string $filterValue
      * @param string $filterOperator
      */
-    private function applyFilter(&$items, string $filterKey, string $filterValue, string $filterOperator = '='): void
+    protected function applyFilter(&$items, string $filterKey, string $filterValue, string $filterOperator = '='): void
     {
         if (strstr($filterKey, '.')) {
             $filterKey = explode('.', $filterKey);
@@ -260,25 +259,25 @@ abstract class NetworkController extends BaseController
                 });
         }
 
+        $orderBy = $this->defaultOrder;
+        $sort = $this->defaultSort;
+
         // Set default order
-        if (!$request->filled(self::ORDER_BY_PARAM)) {
-            $items = $items->orderBy($this->defaultOrder[0] ?? 'id', $this->defaultOrder[1] ?? self::SORT_DESC);
+        if (
+            $request->filled(self::ORDER_BY_PARAM)
+            && in_array($request->get(self::ORDER_BY_PARAM), $this->orderAble)
+        ) {
+            $orderBy = $request->get(self::ORDER_BY_PARAM);
         }
 
-        // Set custom order
-        if (!empty($this->orderAble)) {
-            // Add ordering to the index
-            // nest in case the model doesn't want ordering we don't need all those checks..
-            if (
-                $request->filled(self::ORDER_BY_PARAM)
-                && in_array($request->input(self::ORDER_BY_PARAM), $this->orderAble, TRUE)
-            ) {
-                $items = $items->orderBy(
-                    $request->input(self::ORDER_BY_PARAM),
-                    $request->{self::SORT_PARAM} === self::SORT_DESC ? self::SORT_DESC : self::SORT_ASC
-                );
+        if ($request->filled(self::SORT_PARAM)) {
+            $sort = strtolower($request->get(self::SORT_PARAM));
+            if ($sort !== self::SORT_ASC && $sort !== self::SORT_DESC) {
+                $sort = $this->defaultSort;
             }
         }
+        $items = $items->orderBy($orderBy, $sort);
+        unset($orderBy, $sort);
 
         $filters = $request->input(self::FILTERS_PARAM);
         if (is_array($filters) && !empty($filters)) {
@@ -322,17 +321,18 @@ abstract class NetworkController extends BaseController
         }
 
         if ($this->itemsPerPage !== self::LIMIT_ALL) {
-            $items = $items->paginate($this->itemsPerPage);
+            $result = $items->paginate($this->itemsPerPage);
             if (empty($this->transformerInstance)) {
-                return $items;
+                return $result;
             }
-            $response = $this->response->paginator($items, $this->transformerInstance);
+
+            $response = $this->response->paginator($result, $this->transformerInstance);
         } else {
-            $items = $items->get();
+            $result = $items->get();
             if (empty($this->transformerInstance)) {
-                return $items;
+                return $result;
             }
-            $response = $this->response->collection($items, $this->transformerInstance);
+            $response = $this->response->collection($result, $this->transformerInstance);
         }
 
         if (($request->filled(self::SHOW_META_PARAM))) {

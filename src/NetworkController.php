@@ -22,26 +22,26 @@ abstract class NetworkController extends BaseController
     /**
      * The location of all models
      */
-    private const MODELS_DIR = '\App\Http\Models\\';
+    const MODELS_DIR = '\App\Http\Models\\';
 
-    protected const ORDER_BY_PARAM = 'orderby';
-    protected const SORT_PARAM = 'sort';
-    protected const QUERY_PARAM = 'query';
-    protected const FILTERS_PARAM = 'filters';
-    protected const RESOLVE_PARAM = 'resolve';
-    protected const SHOW_META_PARAM = 'showMeta';
+    const ORDER_BY_PARAM = 'orderby';
+    const SORT_PARAM = 'sort';
+    const QUERY_PARAM = 'query';
+    const FILTERS_PARAM = 'filters';
+    const RESOLVE_PARAM = 'resolve';
+    const SHOW_META_PARAM = 'showMeta';
 
-    protected const SORT_ASC = 'asc';
-    protected const SORT_DESC = 'desc';
-    protected const LIMIT_ALL = 'all';
+    const SORT_ASC = 'asc';
+    const SORT_DESC = 'desc';
+    const LIMIT_ALL = 'all';
 
-    private const FILTER_GREATER_THAN = 'gt';
-    private const FILTER_LESSER_THAN = 'lt';
-    private const FILTER_GREATER_THAN_OR_EQUALS = 'gte';
-    private const FILTER_LESSER_THAN_OR_EQUALS = 'lte';
-    private const FILTER_FULL_MATCH = '%%';
-    private const FILTER_RIGHT_MATCH = '*%';
-    private const FILTER_LEFT_MATCH = '%*';
+    const FILTER_GREATER_THAN = 'gt';
+    const FILTER_LESSER_THAN = 'lt';
+    const FILTER_GREATER_THAN_OR_EQUALS = 'gte';
+    const FILTER_LESSER_THAN_OR_EQUALS = 'lte';
+    const FILTER_FULL_MATCH = '%%';
+    const FILTER_RIGHT_MATCH = '*%';
+    const FILTER_LEFT_MATCH = '%*';
 
     /**
      * The name of the model

@@ -52,6 +52,11 @@ abstract class BaseModel extends Model
     protected $resolveAble;
 
     /**
+     * @var array
+     */
+    protected $aggregateAble;
+
+    /**
      * If we are using a transformer apply the API transformer casing
      *
      * @var TransformerAbstract
@@ -121,6 +126,14 @@ abstract class BaseModel extends Model
     public function getResolveAble(): array
     {
         return $this->resolveAble ?? [];
+    }
+
+    /**
+     * @return array
+     */
+    public function getAggregateAble(): array
+    {
+        return $this->aggregateAble ?? [];
     }
 
     /**

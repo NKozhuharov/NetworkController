@@ -26,14 +26,18 @@ abstract class NetworkController extends BaseController
 
     const ORDER_BY_PARAM = 'orderby';
     const SORT_PARAM = 'sort';
+    const LIMIT_PARAM = 'limit';
     const QUERY_PARAM = 'query';
     const FILTERS_PARAM = 'filters';
     const RESOLVE_PARAM = 'resolve';
     const SHOW_META_PARAM = 'showMeta';
+    const AGGREGATE_PARAM = 'aggregate';
+    const META_ROUTE_INFO_PARAM = 'route_info';
 
     const SORT_ASC = 'asc';
     const SORT_DESC = 'desc';
     const LIMIT_ALL = 'all';
+    const LIMIT_EMPTY = 'empty';
 
     const FILTER_GREATER_THAN = 'gt';
     const FILTER_LESSER_THAN = 'lt';
@@ -67,7 +71,7 @@ abstract class NetworkController extends BaseController
     /**
      * If we are using a transformer, create an instance here
      *
-     * @var mixed
+     * @var TransformerAbstract
      */
     protected $transformerInstance;
 
@@ -92,40 +96,76 @@ abstract class NetworkController extends BaseController
      */
     protected $withoutRelationInsert = FALSE;
 
+    /**
+     * The default column to order collections by
+     *
+     * @var string
+     */
     protected $defaultOrder = BaseModel::F_ID;
 
+    /**
+     * The default direction to sort collections by
+     *
+     * @var string
+     */
     protected $defaultSort = self::SORT_DESC;
 
     /**
+     * Contains all columns, which can be used to order a collection
+     *
      * @var array
      */
     protected $orderAble;
+
     /**
+     * Contains all columns, which can be used to filter a collection
+     *
      * @var array
      */
     protected $filterAble;
 
-    /** @var array */
+    /**
+     * Contains all related models, which can be resolved, when obtaining a collection
+     *
+     * @var array
+     */
     protected $resolveAble;
 
-    /** @var array */
+    /**
+     * Contains all columns, which can be used to query a collection
+     *
+     * @var array
+     */
     protected $queryAble;
 
     /**
+     * Contains the function names, which can be used to aggregate a collection
+     *
+     * @var array
+     */
+    protected $aggregateAble;
+
+    /**
      * Create a new controller instance.
+     * @throws Exception
      */
     public function __construct()
     {
         if (!empty($this->modelName)) {
             $this->modelName = self::MODELS_DIR . $this->modelName;
             $this->model = new $this->modelName;
-            // Todo: Remove this after moving transformer properties to models..
-            $this->transformer = $this->transformer ?? $this->model->getTransformer();
-            $this->orderAble = $this->model->getOrderAble();
 
+            $this->transformer = $this->model->getTransformer();
+            if (empty($this->transformer)) {
+                throw new Exception("Model {$this->modelName} needs a transformer in order to use NetworkController");
+            }
+            $this->transformerInstance = new $this->transformer;
+
+            $this->orderAble = $this->model->getOrderAble();
             $this->filterAble = $this->model->getFilterAble();
             $this->resolveAble = $this->model->getResolveAble();
             $this->queryAble = $this->model->getQueryAble();
+            $this->aggregateAble = $this->model->getAggregateAble();
 
             $this->getItemsPerPageFromGet();
 
@@ -142,12 +182,8 @@ abstract class NetworkController extends BaseController
                 }
             }
 
-            if ($this->transformer) {
-                /** @var TransformerAbstract $transformer */
-                $this->transformerInstance = new $this->transformer;
-                $this->transformerInstance->setDefaultIncludes($approvedResolve);
-                $this->transformerInstance->setAvailableIncludes($this->model->getWith());
-            }
+            $this->transformerInstance->setDefaultIncludes($approvedResolve);
+            $this->transformerInstance->setAvailableIncludes($this->model->getWith());
         }
     }
 
@@ -157,16 +193,15 @@ abstract class NetworkController extends BaseController
      *
      * @return void
      */
-    public function getItemsPerPageFromGet(): void
+    private function getItemsPerPageFromGet(): void
     {
-        if (isset(request()->limit) && !empty(request()->limit)) {
-            if (is_numeric(request()->limit)) {
-                $itemsPerPage = (int)request()->limit;
-                if (!empty($itemsPerPage) && $itemsPerPage > 0) {
-                    $this->itemsPerPage = $itemsPerPage;
-                }
-            } elseif (strtolower(request()->limit) === self::LIMIT_ALL) {
+        if (isset(request()->{self::LIMIT_PARAM}) && !empty(request()->{self::LIMIT_PARAM})) {
+            if (is_numeric(request()->{self::LIMIT_PARAM}) && (int)request()->{self::LIMIT_PARAM} > 0) {
+                $this->itemsPerPage = (int)request()->{self::LIMIT_PARAM};
+            } elseif (strtolower(request()->{self::LIMIT_PARAM}) === self::LIMIT_ALL) {
                 $this->itemsPerPage = self::LIMIT_ALL;
+            } elseif (strtolower(request()->{self::LIMIT_PARAM}) === self::LIMIT_EMPTY) {
+                $this->itemsPerPage = self::LIMIT_EMPTY;
             }
         }
     }
@@ -190,15 +225,15 @@ abstract class NetworkController extends BaseController
     }
 
     /**
-     * Applies a filter to the $items query builder.
+     * Applies a filter to the $builder query builder.
      * Supports related models, one level deep.
      *
-     * @param $items
+     * @param $builder
      * @param string $filterKey
      * @param string $filterValue
      * @param string $filterOperator
      */
-    protected function applyFilter(&$items, string $filterKey, string $filterValue, string $filterOperator = '='): void
+    private function applyFilter(&$builder, string $filterKey, string $filterValue, string $filterOperator = '='): void
     {
         if (strstr($filterKey, '.')) {
             $filterKey = explode('.', $filterKey);
@@ -208,14 +243,14 @@ abstract class NetworkController extends BaseController
             ) {
                 return;
             }
-            $items->whereHas($filterKey[0], function ($q) use ($filterKey, $filterValue, $filterOperator) {
+            $builder->whereHas($filterKey[0], function ($q) use ($filterKey, $filterValue, $filterOperator) {
                 $q->where($filterKey[1], $filterOperator, $filterValue);
             });
             return;
         }
 
         if (in_array($filterKey, $this->filterAble, TRUE)) {
-            $items->where($filterKey, $filterOperator, $filterValue);
+            $builder->where($filterKey, $filterOperator, $filterValue);
         }
     }
 
@@ -226,11 +261,11 @@ abstract class NetworkController extends BaseController
      *
      * @return mixed
      */
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
-        $items = $this->model;
+        $builder = $this->model;
         if ($request->filled(self::QUERY_PARAM) && !empty($this->queryAble) && is_array($this->queryAble)) {
-            $items = $items->where(
+            $builder = $builder->where(
                 function ($query) use ($request) {
                     $queryWord = $request->get(self::QUERY_PARAM);
                     foreach ($this->queryAble as $column => $operators) {
@@ -261,7 +296,6 @@ abstract class NetworkController extends BaseController
         $orderBy = $this->defaultOrder;
         $sort = $this->defaultSort;
 
-        // Set default order
         if (
             $request->filled(self::ORDER_BY_PARAM)
             && in_array($request->get(self::ORDER_BY_PARAM), $this->orderAble)
@@ -275,7 +309,7 @@ abstract class NetworkController extends BaseController
                 $sort = $this->defaultSort;
             }
         }
-        $items = $items->orderBy($orderBy, $sort);
+        $builder = $builder->orderBy($orderBy, $sort);
         unset($orderBy, $sort);
 
         $filters = $request->input(self::FILTERS_PARAM);
@@ -292,53 +326,75 @@ abstract class NetworkController extends BaseController
                     foreach ($filterValue as $requestOperator => $value) {
                         switch ($requestOperator) {
                             case self::FILTER_GREATER_THAN:
-                                $this->applyFilter($items, $filterKey, $value, '>');
+                                $this->applyFilter($builder, $filterKey, $value, '>');
                                 break;
                             case self::FILTER_LESSER_THAN:
-                                $this->applyFilter($items, $filterKey, $value, '<');
+                                $this->applyFilter($builder, $filterKey, $value, '<');
                                 break;
                             case self::FILTER_GREATER_THAN_OR_EQUALS:
-                                $this->applyFilter($items, $filterKey, $value, '>=');
+                                $this->applyFilter($builder, $filterKey, $value, '>=');
                                 break;
                             case self::FILTER_LESSER_THAN_OR_EQUALS:
-                                $this->applyFilter($items, $filterKey, $value, '<=');
+                                $this->applyFilter($builder, $filterKey, $value, '<=');
                                 break;
                             case self::FILTER_FULL_MATCH:
                             case self::FILTER_RIGHT_MATCH:
                             case self::FILTER_LEFT_MATCH:
-                                $this->applyFilter($items, $filterKey, $this->getFilterLikeSearchWordValue($value, $requestOperator), 'LIKE');
+                                $this->applyFilter($builder, $filterKey, $this->getFilterLikeSearchWordValue($value, $requestOperator), 'LIKE');
                                 break;
                             default:
-                                $this->applyFilter($items, $filterKey, $value);
+                                $this->applyFilter($builder, $filterKey, $value);
                                 break;
                         }
                     }
                 } else {
-                    $this->applyFilter($items, $filterKey, $filterValue, '=');
+                    $this->applyFilter($builder, $filterKey, $filterValue, '=');
                 }
             }
         }
+        unset($filters);
 
-        if ($this->itemsPerPage !== self::LIMIT_ALL) {
-            $result = $items->paginate($this->itemsPerPage);
-            if (empty($this->transformerInstance)) {
-                return $result;
-            }
+        switch ($this->itemsPerPage) {
+            case self::LIMIT_EMPTY:
+                $response = $this->response->collection($builder->take(0)->get(), $this->transformerInstance);
+                break;
+            case self::LIMIT_ALL:
+                $response = $this->response->collection($builder->get(), $this->transformerInstance);
+                break;
+            default:
+                $response = $this->response->paginator($builder->paginate($this->itemsPerPage), $this->transformerInstance);
+                break;
+        };
 
-            $response = $this->response->paginator($result, $this->transformerInstance);
-        } else {
-            $result = $items->get();
-            if (empty($this->transformerInstance)) {
-                return $result;
+        if ($request->get(self::AGGREGATE_PARAM)) {
+            $aggregations = [];
+            foreach ($request->get(self::AGGREGATE_PARAM) as $aggregation) {
+                if (
+                    !in_array($aggregation, $this->aggregateAble)
+                    || !method_exists($this, self::AGGREGATE_PARAM . '_' . $aggregation)
+                ) {
+                    continue;
+                }
+                $aggregations[$aggregation] = $this->{self::AGGREGATE_PARAM . '_' . $aggregation}($builder);
             }
-            $response = $this->response->collection($result, $this->transformerInstance);
+            if (!empty($aggregations)) {
+                $response->addMeta(self::AGGREGATE_PARAM, $aggregations);
+            }
         }
 
         if (($request->filled(self::SHOW_META_PARAM))) {
-            $response->addMeta(self::ORDER_BY_PARAM, !empty($this->orderAble) ? $this->orderAble : [])
-                ->addMeta(self::FILTERS_PARAM, !empty($this->filterAble) ? $this->filterAble : [])
-                ->addMeta(self::QUERY_PARAM, !empty($this->queryAble) ? $this->queryAble : [])
-                ->addMeta(self::RESOLVE_PARAM, !empty($this->resolveAble) ? $this->resolveAble : []);
+            $response->addMeta(
+                self::META_ROUTE_INFO_PARAM,
+                [
+                    self::ORDER_BY_PARAM  => !empty($this->orderAble) ? $this->orderAble : [],
+                    self::SORT_PARAM      => [selF::SORT_ASC, self::SORT_DESC],
+                    self::LIMIT_PARAM     => [selF::LIMIT_ALL, self::LIMIT_EMPTY],
+                    self::FILTERS_PARAM   => !empty($this->filterAble) ? $this->filterAble : [],
+                    self::QUERY_PARAM     => !empty($this->queryAble) ? $this->queryAble : [],
+                    self::RESOLVE_PARAM   => !empty($this->resolveAble) ? $this->resolveAble : [],
+                    self::AGGREGATE_PARAM => !empty($this->aggregateAble) ? $this->aggregateAble : [],
+                ]
+            );
         }
 
         return $response;
@@ -348,20 +404,15 @@ abstract class NetworkController extends BaseController
      * Returns a single item from the current model after a GET request
      *
      * @param int $id
-     *
-     * @return mixed
+     * @return Response
      */
-    public function show(int $id = 0)
+    public function show(int $id = 0): Response
     {
         try {
-            $this->model = $this->model->findOrFail($id);
+            return $this->response->item($this->model->findOrFail($id), $this->transformerInstance);
         } catch (ModelNotFoundException $e) {
-            $this->response->errorNotFound();
+            return $this->response->errorNotFound();
         }
-
-        return $this->transformerInstance
-            ? $this->response->item($this->model, $this->transformerInstance)
-            : $this->model;
     }
 
     /**
@@ -372,7 +423,7 @@ abstract class NetworkController extends BaseController
      *
      * @return mixed
      */
-    public function store(Request $request)
+    public function store(Request $request): Response
     {
         if (!$this->isValidated) {
             $this->validateInput($request);
@@ -410,9 +461,7 @@ abstract class NetworkController extends BaseController
 
         $this->model->loadMissing($this->model->getWith());
 
-        return $this->transformer
-            ? $this->response->item($this->model, new $this->transformer)
-            : $this->model;
+        return $this->response->item($this->model, $this->transformerInstance);
     }
 
     /**
@@ -420,10 +469,9 @@ abstract class NetworkController extends BaseController
      *
      * @param Request $request
      * @param int $id
-     *
-     * @return mixed
+     * @return Response
      */
-    public function update(Request $request, int $id)
+    public function update(Request $request, int $id): Response
     {
         if (!$this->isValidated) {
             $this->validateInput($request, $id);
@@ -432,7 +480,7 @@ abstract class NetworkController extends BaseController
         try {
             $this->model = $this->model->findOrFail($id);
         } catch (ModelNotFoundException $e) {
-            $this->response->errorNotFound();
+            return $this->response->errorNotFound();
         }
 
         $fillables = $this->model->getFillable();
@@ -464,9 +512,7 @@ abstract class NetworkController extends BaseController
         // Refresh model data to populate all required values
         $this->model->refresh();
 
-        return $this->transformer
-            ? $this->response->item($this->model, new $this->transformer)
-            : $this->model;
+        return $this->response->item($this->model, $this->transformerInstance);
     }
 
     /**
@@ -477,7 +523,7 @@ abstract class NetworkController extends BaseController
      * @return Response
      * @throws Exception
      */
-    public function destroy(int $id)
+    public function destroy(int $id): Response
     {
         $this->model = $this->model->findOrFail($id);
 

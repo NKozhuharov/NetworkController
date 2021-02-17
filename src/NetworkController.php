@@ -174,9 +174,13 @@ abstract class NetworkController extends BaseController
             if (is_array($resolve) && !empty($resolve)) {
                 foreach ($resolve as $resolveValue) {
                     if (in_array($resolveValue, $this->resolveAble, TRUE)) {
-                        $approvedResolve[] = $resolveValue;
-                        if (!in_array($resolveValue, $this->model->getWith())) {
-                            $this->model->addToWith(str_replace('-', '.', $resolveValue));
+                        try {
+                            $this->model::has($resolveValue);
+                            $approvedResolve[] = $resolveValue;
+                            if (!in_array($resolveValue, $this->model->getWith())) {
+                                $this->model->addToWith(str_replace('-', '.', $resolveValue));
+                            }
+                        } catch (\BadMethodCallException $exception) {
                         }
                     }
                 }

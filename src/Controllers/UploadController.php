@@ -63,6 +63,58 @@ class UploadController extends BaseController
     private $imagesPath = '';
 
     /**
+     * The key in the request, which contains the files
+     *
+     * @return string
+     */
+    public function getFilesArrayKey(): string
+    {
+        return $this->filesArrayKey;
+    }
+
+    /**
+     * Files with these MIME types will be considered images
+     *
+     * @return array
+     */
+    public function getImageMimeTypes(): array
+    {
+        return $this->imageMimeTypes;
+    }
+
+    /**
+     * Request, containing this path, will return the original image
+     *
+     * @return string
+     */
+    public function getImagesOrgPathName(): string
+    {
+        return $this->imagesOrgPathName;
+    }
+
+    /**
+     * This url part indicates, that the requested resource is an image
+     *
+     * @return string
+     */
+    public function getImagesUrl(): string
+    {
+        return $this->imagesUrl;
+    }
+
+    /**
+     * This url part indicates, that the requested resource is a file (not an image) :D
+     *
+     * @return string
+     */
+    public function getFilesUrl(): string
+    {
+        return $this->filesUrl;
+    }
+
+    /**
+     * Path, where all files are uploaded
+     *
      * @return string
      */
     public function getUploadsPath(): string
@@ -71,6 +123,8 @@ class UploadController extends BaseController
     }
 
     /**
+     * Path, where all images are uploaded
+     *
      * @return string
      */
     public function getImagesPath(): string

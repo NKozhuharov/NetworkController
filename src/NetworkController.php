@@ -46,6 +46,7 @@ abstract class NetworkController extends BaseController
     const FILTER_FULL_MATCH = '%%';
     const FILTER_RIGHT_MATCH = '*%';
     const FILTER_LEFT_MATCH = '%*';
+    const FILTER_IN = 'in';
 
     /**
      * The name of the model
@@ -345,6 +346,9 @@ abstract class NetworkController extends BaseController
                             case self::FILTER_RIGHT_MATCH:
                             case self::FILTER_LEFT_MATCH:
                                 $this->applyFilter($builder, $filterKey, $this->getFilterLikeSearchWordValue($value, $requestOperator), 'LIKE');
+                                break;
+                            case self::FILTER_IN:
+                                $builder->whereIn($filterKey, explode(',', $value));
                                 break;
                             default:
                                 $this->applyFilter($builder, $filterKey, $value);

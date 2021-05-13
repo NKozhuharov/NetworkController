@@ -2,9 +2,11 @@
 
 namespace Nevestul4o\NetworkController;
 
+use BadMethodCallException;
 use Dingo\Api\Http\Response;
 use Dingo\Api\Routing\Helpers;
 use Exception;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
@@ -181,7 +183,7 @@ abstract class NetworkController extends BaseController
                             if (!in_array($resolveValue, $this->model->getWith())) {
                                 $this->model->addToWith(str_replace('-', '.', $resolveValue));
                             }
-                        } catch (\BadMethodCallException $exception) {
+                        } catch (BadMethodCallException $exception) {
                         }
                     }
                 }
@@ -356,7 +358,7 @@ abstract class NetworkController extends BaseController
                         }
                     }
                 } else {
-                    $this->applyFilter($builder, $filterKey, $filterValue, '=');
+                    $this->applyFilter($builder, $filterKey, $filterValue);
                 }
             }
         }
@@ -372,7 +374,7 @@ abstract class NetworkController extends BaseController
             default:
                 $response = $this->response->paginator($builder->paginate($this->itemsPerPage), $this->transformerInstance);
                 break;
-        };
+        }
 
         if ($request->get(self::AGGREGATE_PARAM)) {
             $aggregations = [];
@@ -395,8 +397,8 @@ abstract class NetworkController extends BaseController
                 self::META_ROUTE_INFO_PARAM,
                 [
                     self::ORDER_BY_PARAM  => !empty($this->orderAble) ? $this->orderAble : [],
-                    self::SORT_PARAM      => [selF::SORT_ASC, self::SORT_DESC],
-                    self::LIMIT_PARAM     => [selF::LIMIT_ALL, self::LIMIT_EMPTY],
+                    self::SORT_PARAM      => [self::SORT_ASC, self::SORT_DESC],
+                    self::LIMIT_PARAM     => [self::LIMIT_ALL, self::LIMIT_EMPTY],
                     self::FILTERS_PARAM   => !empty($this->filterAble) ? $this->filterAble : [],
                     self::QUERY_PARAM     => !empty($this->queryAble) ? $this->queryAble : [],
                     self::RESOLVE_PARAM   => !empty($this->resolveAble) ? $this->resolveAble : [],
@@ -417,10 +419,36 @@ abstract class NetworkController extends BaseController
     public function show(int $id = 0): Response
     {
         try {
-            return $this->response->item($this->model->findOrFail($id), $this->transformerInstance);
+            $this->model = $this->model->findOrFail($id);
         } catch (ModelNotFoundException $e) {
-            return $this->response->errorNotFound();
+            $this->response->errorNotFound();
         }
+        return $this->response->item($this->model, $this->transformerInstance);
+    }
+
+    /**
+     * Attempt to recover a deleted object, based on the current request
+     *
+     * @param Request $request
+     * @return Model|null
+     */
+    private function recoverDeletedObject(Request $request): ?Model
+    {
+        $deletedObject = $this->model->onlyTrashed();
+        foreach ($this->model->getFillable() as $fillable) {
+            if (!$request->filled($fillable)) {
+                continue;
+            }
+
+            $deletedObject->where($fillable, '=', $request->input($fillable));
+        }
+
+        $deletedObject = $deletedObject->first();
+        if ($deletedObject !== NULL) {
+            $deletedObject->restore();
+            return $deletedObject;
+        }
+        return NULL;
     }
 
     /**
@@ -437,36 +465,27 @@ abstract class NetworkController extends BaseController
             $this->validateInput($request);
         }
 
-        $deletedObject = $this->model->onlyTrashed();
+        $recoveredObject = $this->recoverDeletedObject($request);
+        if (!empty($recoveredObject)) {
+            $recoveredObject->loadMissing($this->model->getWith());
+            return $this->response->item($recoveredObject, $this->transformerInstance);
+        }
+
         foreach ($this->model->getFillable() as $fillable) {
-            if (!$request->filled($fillable)) {
-                continue;
-            }
-
-            $deletedObject->where($fillable, '=', $request->input($fillable));
-        }
-        $deletedObject->get();
-        if ($deletedObject->count() > 0) {
-            $this->model = $deletedObject;
-            $this->model->restore();
-        } else {
-            foreach ($this->model->getFillable() as $fillable) {
-                $this->model->$fillable = $request->filled($fillable)
-                    ? $request->input($fillable)
-                    : NULL;
-            }
-
-            if (!$this->withoutRelationInsert) {
-                foreach ($this->model->getWith() as $relation) {
-                    $relationId = "{$relation}_id";
-                    $relationRequest = $request->input($relation);
-                    $this->model->$relationId = $relationRequest['data']['id'] ?? NULL;
-                }
-            }
-
-            $this->model->save();
+            $this->model->$fillable = $request->filled($fillable)
+                ? $request->input($fillable)
+                : NULL;
         }
 
+        if (!$this->withoutRelationInsert) {
+            foreach ($this->model->getWith() as $relation) {
+                $relationId = "{$relation}_id";
+                $relationRequest = $request->input($relation);
+                $this->model->$relationId = $relationRequest['data']['id'] ?? NULL;
+            }
+        }
+
+        $this->model->save();
         $this->model->loadMissing($this->model->getWith());
 
         return $this->response->item($this->model, $this->transformerInstance);
@@ -488,7 +507,7 @@ abstract class NetworkController extends BaseController
         try {
             $this->model = $this->model->findOrFail($id);
         } catch (ModelNotFoundException $e) {
-            return $this->response->errorNotFound();
+            $this->response->errorNotFound();
         }
 
         $fillables = $this->model->getFillable();

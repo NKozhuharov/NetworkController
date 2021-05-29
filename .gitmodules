@@ -1,0 +1,3 @@
+[submodule "packages/nevestul4o/NetworkController"]
+	path = packages/nevestul4o/NetworkController
+	url = git@github.com:NKozhuharov/NetworkController.git

@@ -1,0 +1,54 @@
+version: '3'
+
+services:
+  networkcontroller-web:
+    image: networkcontroller/php-apache:latest
+    networks:
+      default:
+        aliases:
+          - networkcontroller-web
+    ports:
+      - '80:80'
+    environment:
+      XDEBUG_CONFIG: 'remote_host=$HOST_IP'
+      PHP_IDE_CONFIG: 'serverName=local.networkcontroller.com'
+    links:
+      - mysql
+    volumes:
+      - ../..:/var/www/networkcontroller
+
+  mysql:
+    image: mysql
+    networks:
+      default:
+        aliases:
+          - networkcontroller-database
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb_flush_log_at_trx_commit=0
+      --default-authentication-plugin=mysql_native_password
+      --sql-mode="ALLOW_INVALID_DATES"
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_DATABASE: 'networkcontroller'
+      MYSQL_USER: 'root'
+      MYSQL_PASSWORD: 'CXyAmA<XT3>DSPK'
+      MYSQL_ROOT_PASSWORD: 'CXyAmA<XT3>DSPK'
+
+  composer:
+    image: composer:1.10.8
+    command: $COMPOSER_COMMAND --no-scripts
+    environment:
+      COMPOSER_VENDOR_DIR: /var/www/networkcontroller/api/vendor
+      SSH_AUTH_SOCK: ssh-auth.sock
+    volumes:
+      - ../..:/var/www/networkcontroller
+      - ../../vendor:/var/www/networkcontroller/vendor
+      - /home/$USERNAME/.ssh:/home/$USERNAME/.ssh
+      - $SSH_AUTH_SOCK:/ssh-auth.sock
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+    working_dir: /var/www/networkcontroller
+    user: $USER

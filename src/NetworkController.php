@@ -262,6 +262,50 @@ abstract class NetworkController extends BaseController
     }
 
     /**
+     * Applies orderBy clause to the provided builder, by using the provided sort and order by options.
+     * Supports related models, one level deep.
+     *
+     * @param $builder
+     * @param string|null $sort
+     * @param string|null $orderBy
+     */
+    protected function applySortAndOrder(&$builder, ?string $sort, ?string $orderBy)
+    {
+        $sort = $sort ? trim(strtolower($sort)) : $this->defaultSort;
+        if ($sort !== self::SORT_ASC && $sort !== self::SORT_DESC) {
+            $sort = $this->defaultSort;
+        }
+
+        $orderBy = $orderBy ? trim(strtolower($orderBy)) : $this->defaultOrder;
+
+        if (in_array($orderBy, $this->orderAble)) {
+            $builder = $builder->orderBy($orderBy, $sort);
+            return;
+        }
+
+        if (strstr($orderBy, '.')) {
+            $orderBy = explode('.', $orderBy);
+            if (
+                count($orderBy) === 2
+                && in_array($orderBy[0], $this->resolveAble)
+                && in_array($orderBy[1], $this->model->{$orderBy[0]}()->getRelated()->getOrderAble())
+            ) {
+                $builder = $builder->orderBy(
+                    $this->model->{$orderBy[0]}()->getRelated()::select($orderBy[1])
+                        ->whereColumn(
+                            $this->model->{$orderBy[0]}()->getQualifiedParentKeyName(),
+                            $this->model->{$orderBy[0]}()->getQualifiedForeignKeyName()
+                        ),
+                    $sort
+                );
+                return;
+            }
+        }
+
+        $builder = $builder->orderBy($this->defaultOrder, $sort);
+    }
+
+    /**
      * Returns a collection of items from the current model after a GET request
      *
      * @param Request $request
@@ -300,24 +344,7 @@ abstract class NetworkController extends BaseController
                 });
         }
 
-        $orderBy = $this->defaultOrder;
-        $sort = $this->defaultSort;
-
-        if (
-            $request->filled(self::ORDER_BY_PARAM)
-            && in_array($request->get(self::ORDER_BY_PARAM), $this->orderAble)
-        ) {
-            $orderBy = $request->get(self::ORDER_BY_PARAM);
-        }
-
-        if ($request->filled(self::SORT_PARAM)) {
-            $sort = strtolower($request->get(self::SORT_PARAM));
-            if ($sort !== self::SORT_ASC && $sort !== self::SORT_DESC) {
-                $sort = $this->defaultSort;
-            }
-        }
-        $builder = $builder->orderBy($orderBy, $sort);
-        unset($orderBy, $sort);
+        $this->applySortAndOrder($builder, $request->get(self::SORT_PARAM), $request->get(self::ORDER_BY_PARAM));
 
         $filters = $request->input(self::FILTERS_PARAM);
         if (is_array($filters) && !empty($filters)) {

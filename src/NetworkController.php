@@ -498,10 +498,10 @@ abstract class NetworkController extends BaseController
             return $this->response->item($recoveredObject, $this->transformerInstance);
         }
 
-        foreach ($this->model->getFillable() as $fillable) {
-            $this->model->$fillable = $request->filled($fillable)
-                ? $request->input($fillable)
-                : NULL;
+        foreach ($this->model->getFillable() as $fillAble) {
+            if ($request->has($fillAble)) {
+                $this->model->$fillAble = $request->input($fillAble);
+            }
         }
 
         if (!$this->withoutRelationInsert) {
@@ -537,11 +537,9 @@ abstract class NetworkController extends BaseController
             $this->response->errorNotFound();
         }
 
-        $fillables = $this->model->getFillable();
-
-        foreach ($fillables as $fillable) {
-            if ($request->$fillable === NULL || $request->has($fillable)) {
-                $this->model->$fillable = $request->input($fillable);
+        foreach ($this->model->getFillable() as $fillAble) {
+            if ($request->has($fillAble)) {
+                $this->model->$fillAble = $request->input($fillAble);
             }
         }
 

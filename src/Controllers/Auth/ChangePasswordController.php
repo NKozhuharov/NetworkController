@@ -18,6 +18,7 @@ class ChangePasswordController extends Controller
     use Helpers;
 
     const F_PASSWORD_CURRENT = 'password_current';
+    const F_PASSWORD_CONFIRMATION = 'password_confirmation';
     const F_USER_ID = 'user_id';
 
     /**
@@ -32,15 +33,16 @@ class ChangePasswordController extends Controller
         $this->validate(
             $request,
             [
-                User::F_PASSWORD         => 'required|confirmed|min:8',
-                self::F_PASSWORD_CURRENT => 'required',
+                self::F_PASSWORD_CURRENT      => 'required',
+                User::F_PASSWORD              => 'required|confirmed|min:8',
+                self::F_PASSWORD_CONFIRMATION => 'required',
             ]
         );
 
         /** @var User $user */
         $user = Auth::user();
         if (!Hash::check($request->{self::F_PASSWORD_CURRENT}, $user->getAuthPassword())) {
-            throw ValidationException::withMessages(["Provide your current password"]);
+            throw ValidationException::withMessages(["Wrong current password"]);
         }
         $user->{User::F_PASSWORD} = Hash::make($request->{User::F_PASSWORD});
         $user->save();
@@ -49,7 +51,7 @@ class ChangePasswordController extends Controller
     }
 
     /**
-     * Allows to change the password to the user, by it's id (user_id)
+     * Allows to change the password to the user, by its id (user_id)
      *
      * @param Request $request
      * @return Response
@@ -62,6 +64,7 @@ class ChangePasswordController extends Controller
             [
                 self::F_USER_ID  => 'required|integer|exists:' . User::TABLE_NAME . ',id,' . BaseModel::F_DELETED_AT . ',NULL',
                 User::F_PASSWORD => 'required|confirmed|min:8',
+                self::F_PASSWORD_CONFIRMATION => 'required',
             ]
         );
 

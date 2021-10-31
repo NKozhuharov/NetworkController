@@ -30,7 +30,8 @@ Add the following code in the `api.php` in the routes folder:
 ## LoginController and ChangePasswordController
 * Pre-made controller classes, providing basic functionality for login/logout and password changes
 * They require a Model, called **User**, placed in the `\App\Http\Models\` folder, extending **BaseUser**
-* They require a Transfomer, called **UserTransformer**, placed in the `App\Http\Models\Transformers\` folder
+* Change the namespace of the user provider in `auth.php` to `\App\Http\Models\User`
+* They require a Transformer, called **UserTransformer**, placed in the `App\Http\Models\Transformers\` folder
 * Functions can be freely overridden
 * Can be used by defining these routes in the `api.php`:
 ```php

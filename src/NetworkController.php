@@ -479,6 +479,37 @@ abstract class NetworkController extends BaseController
     }
 
     /**
+     * Check if resolved objects are provided in Store or Update requests and use the defined relations
+     * to set the foreign key values of the current model
+     *
+     * @param Request $request
+     */
+    private function handleStoreUpdateResolvedRelations(Request $request): void
+    {
+        if ($this->withoutRelationInsert) {
+            return;
+        }
+
+        foreach ($this->model->getWith() as $relation) {
+            if (!$request->has($relation)) {
+                continue;
+            }
+
+            $relationRequest = $request->input($relation);
+            if (count($relationRequest) === 1 && array_key_exists(BaseModel::DATA, $relationRequest)) {
+                $relationRequest = $relationRequest[BaseModel::DATA];
+            }
+
+            if (!array_key_exists($this->model->{$relation}()->getForeignKeyName(), $relationRequest)) {
+                continue;
+            }
+
+            $this->model->{$this->model->{$relation}()->getLocalKeyName()} =
+                $relationRequest[$this->model->{$relation}()->getForeignKeyName()];
+        }
+    }
+
+    /**
      * Inserts an item from the current model after a POST request
      * Will attempt to recover deleted items
      *
@@ -504,13 +535,7 @@ abstract class NetworkController extends BaseController
             }
         }
 
-        if (!$this->withoutRelationInsert) {
-            foreach ($this->model->getWith() as $relation) {
-                $relationId = "{$relation}_id";
-                $relationRequest = $request->input($relation);
-                $this->model->$relationId = $relationRequest['data']['id'] ?? NULL;
-            }
-        }
+        $this->handleStoreUpdateResolvedRelations($request);
 
         $this->model->save();
         $this->model->loadMissing($this->model->getWith());
@@ -543,21 +568,7 @@ abstract class NetworkController extends BaseController
             }
         }
 
-        if (!$this->withoutRelationInsert) {
-            foreach ($this->model->getWith() as $relation) {
-                foreach ($request->request as $key => $value) {
-                    if ($key === $relation) {
-                        $relationRequest = $request->input($relation);
-                        if (isset($relationRequest['data']['id'])) {
-                            $this->model->{"{$relation}_id"} = $relationRequest['data']['id'];
-                        } elseif ($value === NULL) {
-                            $this->model->{"{$relation}_id"} = NULL;
-                        }
-                        break;
-                    }
-                }
-            }
-        }
+        $this->handleStoreUpdateResolvedRelations($request);
 
         $this->model->save();
 

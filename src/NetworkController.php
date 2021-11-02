@@ -169,6 +169,11 @@ abstract class NetworkController extends BaseController
             $this->orderAble = $this->model->getOrderAble();
             $this->filterAble = $this->model->getFilterAble();
             $this->resolveAble = $this->model->getResolveAble();
+            foreach ($this->resolveAble as $relation) {
+                if (!method_exists($relation, $this->model)) {
+                    throw new Exception("Create a `$relation()` method to define relation in `{$this->modelName}` class");
+                }
+            }
             $this->queryAble = $this->model->getQueryAble();
             $this->aggregateAble = $this->model->getAggregateAble();
 

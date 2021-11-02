@@ -292,15 +292,28 @@ abstract class NetworkController extends BaseController
                 && in_array($orderBy[0], $this->resolveAble)
                 && in_array($orderBy[1], $this->model->{$orderBy[0]}()->getRelated()->getOrderAble())
             ) {
-                $builder = $builder->orderBy(
-                    $this->model->{$orderBy[0]}()->getRelated()::select($orderBy[1])
-                        ->whereColumn(
-                            $this->model->{$orderBy[0]}()->getQualifiedParentKeyName(),
-                            $this->model->{$orderBy[0]}()->getQualifiedForeignKeyName()
-                        ),
-                    $sort
-                );
-                return;
+                switch (get_class($this->model->client())) {
+                    case HasOne::class:
+                        $builder = $builder->orderBy(
+                            $this->model->{$orderBy[0]}()->getRelated()::select($orderBy[1])
+                                ->whereColumn(
+                                    $this->model->{$orderBy[0]}()->getQualifiedParentKeyName(),
+                                    $this->model->{$orderBy[0]}()->getQualifiedForeignKeyName()
+                                ),
+                            $sort
+                        );
+                        return;
+                    case BelongsTo::class:
+                        $builder = $builder->orderBy(
+                            $this->model->{$orderBy[0]}()->getRelated()::select($orderBy[1])
+                                ->whereColumn(
+                                    $this->model->{$orderBy[0]}()->getQualifiedForeignKeyName(),
+                                    $this->model->{$orderBy[0]}()->getQualifiedOwnerKeyName()
+                                ),
+                            $sort
+                        );
+                        return;
+                }
             }
         }
 

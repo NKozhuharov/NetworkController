@@ -8,6 +8,8 @@ use Dingo\Api\Routing\Helpers;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -500,12 +502,24 @@ abstract class NetworkController extends BaseController
                 $relationRequest = $relationRequest[BaseModel::DATA];
             }
 
-            if (!array_key_exists($this->model->{$relation}()->getForeignKeyName(), $relationRequest)) {
-                continue;
-            }
+            switch (get_class($this->model->client())) {
+                case HasOne::class:
+                    if (!array_key_exists($this->model->{$relation}()->getForeignKeyName(), $relationRequest)) {
+                        continue 2;
+                    }
 
-            $this->model->{$this->model->{$relation}()->getLocalKeyName()} =
-                $relationRequest[$this->model->{$relation}()->getForeignKeyName()];
+                    $this->model->{$this->model->{$relation}()->getLocalKeyName()} =
+                        $relationRequest[$this->model->{$relation}()->getForeignKeyName()];
+                    break;
+                case BelongsTo::class:
+                    if (!array_key_exists($this->model->{$relation}()->getOwnerKeyName(), $relationRequest)) {
+                        continue 2;
+                    }
+
+                    $this->model->{$this->model->{$relation}()->getForeignKeyName()} =
+                        $relationRequest[$this->model->{$relation}()->getOwnerKeyName()];
+                    break;
+            }
         }
     }
 

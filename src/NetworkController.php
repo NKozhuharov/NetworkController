@@ -170,7 +170,7 @@ abstract class NetworkController extends BaseController
             $this->filterAble = $this->model->getFilterAble();
             $this->resolveAble = $this->model->getResolveAble();
             foreach ($this->resolveAble as $relation) {
-                if (!method_exists($relation, $this->model)) {
+                if (!method_exists($this->model, $relation)) {
                     throw new Exception("Create a `$relation()` method to define relation in `{$this->modelName}` class");
                 }
             }
@@ -297,7 +297,7 @@ abstract class NetworkController extends BaseController
                 && in_array($orderBy[0], $this->resolveAble)
                 && in_array($orderBy[1], $this->model->{$orderBy[0]}()->getRelated()->getOrderAble())
             ) {
-                switch (get_class($this->model->client())) {
+                switch (get_class($this->model->{$orderBy[0]}())) {
                     case HasOne::class:
                         $builder = $builder->orderBy(
                             $this->model->{$orderBy[0]}()->getRelated()::select($orderBy[1])
@@ -520,7 +520,7 @@ abstract class NetworkController extends BaseController
                 $relationRequest = $relationRequest[BaseModel::DATA];
             }
 
-            switch (get_class($this->model->client())) {
+            switch (get_class($this->model->{$relation}())) {
                 case HasOne::class:
                     if (!array_key_exists($this->model->{$relation}()->getForeignKeyName(), $relationRequest)) {
                         continue 2;

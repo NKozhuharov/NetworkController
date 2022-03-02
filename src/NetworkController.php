@@ -38,6 +38,9 @@ abstract class NetworkController extends BaseController
     const AGGREGATE_PARAM = 'aggregate';
     const META_ROUTE_INFO_PARAM = 'route_info';
 
+    const ONLY_DELETED = 'only_deleted';
+    const WITH_DELETED = 'with_deleted';
+
     const SORT_ASC = 'asc';
     const SORT_DESC = 'desc';
     const LIMIT_ALL = 'all';
@@ -410,6 +413,12 @@ abstract class NetworkController extends BaseController
             }
         }
         unset($filters);
+
+        if ($request->get(self::WITH_DELETED)) {
+            $builder = $builder->withTrashed();
+        } elseif ($request->get(self::ONLY_DELETED)) {
+            $builder = $builder->onlyTrashed();
+        }
 
         switch ($this->itemsPerPage) {
             case self::LIMIT_EMPTY:

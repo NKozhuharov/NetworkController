@@ -227,7 +227,7 @@ abstract class NetworkController extends BaseController
      * @param string $operator
      * @return string
      */
-    private function getFilterLikeSearchWordValue(string $searchWord, string $operator): string
+    protected function getFilterLikeSearchWordValue(string $searchWord, string $operator): string
     {
         switch ($operator) {
             case self::FILTER_RIGHT_MATCH:
@@ -247,7 +247,7 @@ abstract class NetworkController extends BaseController
      * @param string $filterValue
      * @param string $filterOperator
      */
-    private function applyFilter(&$builder, string $filterKey, string $filterValue, string $filterOperator = '='): void
+    protected function applyFilter(&$builder, string $filterKey, string $filterValue, string $filterOperator = '='): void
     {
         if (strstr($filterKey, '.')) {
             $filterKey = explode('.', $filterKey);

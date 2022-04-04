@@ -141,6 +141,11 @@ abstract class NetworkController extends BaseController
      */
     protected array $aggregateAble;
 
+    /**
+     * An instance of ResponseHelper
+     *
+     * @var ResponseHelper
+     */
     protected ResponseHelper $responseHelper;
 
     /**
@@ -159,7 +164,7 @@ abstract class NetworkController extends BaseController
         if (empty($transformerClass)) {
             throw new Exception("Model {$this->modelClass} needs a transformer in order to use NetworkController");
         }
-        $this->transformerInstance = new $this->model->getTransformerClass();
+        $this->transformerInstance = new $transformerClass;
 
         $this->responseHelper = new ResponseHelper();
 

@@ -6,6 +6,9 @@ use Illuminate\Http\JsonResponse;
 use League\Fractal\Resource\ResourceAbstract;
 use League\Fractal\Manager;
 
+/**
+ * Stores functions, which are commonly used when creating responses
+ */
 class ResponseHelper
 {
     /**

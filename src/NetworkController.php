@@ -3,30 +3,25 @@
 namespace Nevestul4o\NetworkController;
 
 use BadMethodCallException;
-use Dingo\Api\Http\Response;
-use Dingo\Api\Routing\Helpers;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
+use League\Fractal\Pagination\IlluminatePaginatorAdapter;
+use League\Fractal\Resource\Collection;
+use League\Fractal\Resource\Item;
+use League\Fractal\Resource\ResourceAbstract;
 use League\Fractal\TransformerAbstract;
 use Nevestul4o\NetworkController\Models\BaseModel;
 
 abstract class NetworkController extends BaseController
 {
-    use Helpers;
-    use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
-
-    /**
-     * The location of all models
-     */
-    const MODELS_DIR = '\App\Http\Models\\';
+    use ValidatesRequests;
 
     const ORDER_BY_PARAM = 'orderby';
     const SORT_PARAM = 'sort';
@@ -56,102 +51,104 @@ abstract class NetworkController extends BaseController
     const FILTER_IN = 'in';
 
     /**
-     * The name of the model
+     * The class of the model
      *
      * @var string
      */
-    protected $modelName;
+    protected string $modelClass;
 
     /**
-     * The full path to the model
+     * An instance of the model
      *
      * @var BaseModel
      */
-    protected $model;
+    protected BaseModel $model;
 
     /**
      * If we are using a transformer apply the API transformer casing
      *
      * @var TransformerAbstract
      */
-    protected $transformer;
+    protected TransformerAbstract $transformer;
 
     /**
      * If we are using a transformer, create an instance here
      *
      * @var TransformerAbstract
      */
-    protected $transformerInstance;
+    protected TransformerAbstract $transformerInstance;
 
     /**
      * How many items to show per page
      *
      * @var int
      */
-    protected $itemsPerPage = 20;
+    protected int $itemsPerPage = 20;
 
     /**
      * Ignore second validation when using parent:: method
      *
      * @var bool
      */
-    protected $isValidated = FALSE;
+    protected bool $isValidated = FALSE;
 
     /**
      * Ignore additional relation setter
      *
      * @var bool
      */
-    protected $withoutRelationInsert = FALSE;
+    protected bool $withoutRelationInsert = FALSE;
 
     /**
      * The default column to order collections by
      *
      * @var string
      */
-    protected $defaultOrder = BaseModel::F_ID;
+    protected string $defaultOrder = BaseModel::F_ID;
 
     /**
      * The default direction to sort collections by
      *
      * @var string
      */
-    protected $defaultSort = self::SORT_DESC;
+    protected string $defaultSort = self::SORT_DESC;
 
     /**
      * Contains all columns, which can be used to order a collection
      *
      * @var array
      */
-    protected $orderAble;
+    protected array $orderAble;
 
     /**
      * Contains all columns, which can be used to filter a collection
      *
      * @var array
      */
-    protected $filterAble;
+    protected array $filterAble;
 
     /**
      * Contains all related models, which can be resolved, when obtaining a collection
      *
      * @var array
      */
-    protected $resolveAble;
+    protected array $resolveAble;
 
     /**
      * Contains all columns, which can be used to query a collection
      *
      * @var array
      */
-    protected $queryAble;
+    protected array $queryAble;
 
     /**
      * Contains the function names, which can be used to aggregate a collection
      *
      * @var array
      */
-    protected $aggregateAble;
+    protected array $aggregateAble;
+
+    protected ResponseHelper $responseHelper;
 
     /**
      * Create a new controller instance.
@@ -159,49 +156,52 @@ abstract class NetworkController extends BaseController
      */
     public function __construct()
     {
-        if (!empty($this->modelName)) {
-            $this->modelName = self::MODELS_DIR . $this->modelName;
-            $this->model = new $this->modelName;
+        if (empty($this->modelClass)) {
+            throw new Exception("Define a model class in order to use NetworkController");
+        }
 
-            $this->transformer = $this->model->getTransformer();
-            if (empty($this->transformer)) {
-                throw new Exception("Model {$this->modelName} needs a transformer in order to use NetworkController");
+        $this->model = new $this->modelClass;
+
+        $this->transformer = $this->model->getTransformer();
+        if (empty($this->transformer)) {
+            throw new Exception("Model {$this->modelClass} needs a transformer in order to use NetworkController");
+        }
+        $this->transformerInstance = new $this->transformer;
+
+        $this->responseHelper = new ResponseHelper();
+
+        $this->orderAble = $this->model->getOrderAble();
+        $this->filterAble = $this->model->getFilterAble();
+        $this->resolveAble = $this->model->getResolveAble();
+        foreach ($this->resolveAble as $relation) {
+            if (!method_exists($this->model, $relation)) {
+                throw new Exception("Create a `$relation()` method to define relation in {$this->modelClass}");
             }
-            $this->transformerInstance = new $this->transformer;
+        }
+        $this->queryAble = $this->model->getQueryAble();
+        $this->aggregateAble = $this->model->getAggregateAble();
 
-            $this->orderAble = $this->model->getOrderAble();
-            $this->filterAble = $this->model->getFilterAble();
-            $this->resolveAble = $this->model->getResolveAble();
-            foreach ($this->resolveAble as $relation) {
-                if (!method_exists($this->model, $relation)) {
-                    throw new Exception("Create a `$relation()` method to define relation in `{$this->modelName}` class");
-                }
-            }
-            $this->queryAble = $this->model->getQueryAble();
-            $this->aggregateAble = $this->model->getAggregateAble();
+        $this->getItemsPerPageFromGet();
 
-            $this->getItemsPerPageFromGet();
-
-            $approvedResolve = [];
-            $resolve = request()->input(self::RESOLVE_PARAM);
-            if (is_array($resolve) && !empty($resolve)) {
-                foreach ($resolve as $resolveValue) {
-                    if (in_array($resolveValue, $this->resolveAble, TRUE)) {
-                        try {
-                            $this->model::has($resolveValue);
-                            $approvedResolve[] = $resolveValue;
-                            if (!in_array($resolveValue, $this->model->getWith())) {
-                                $this->model->addToWith(str_replace('-', '.', $resolveValue));
-                            }
-                        } catch (BadMethodCallException $exception) {
+        $approvedResolve = [];
+        $resolve = request()->input(self::RESOLVE_PARAM);
+        if (is_array($resolve) && !empty($resolve)) {
+            foreach ($resolve as $resolveValue) {
+                if (in_array($resolveValue, $this->resolveAble, TRUE)) {
+                    try {
+                        $this->model::has($resolveValue);
+                        $approvedResolve[] = $resolveValue;
+                        if (!in_array($resolveValue, $this->model->getWith())) {
+                            $this->model->addToWith(str_replace('-', '.', $resolveValue));
                         }
+                    } catch (BadMethodCallException $exception) {
                     }
                 }
             }
-
-            $this->transformerInstance->setDefaultIncludes($approvedResolve);
-            $this->transformerInstance->setAvailableIncludes($this->model->getWith());
         }
+
+        $this->transformerInstance->setDefaultIncludes($approvedResolve);
+        $this->transformerInstance->setAvailableIncludes($this->model->getWith());
     }
 
     /**
@@ -333,9 +333,9 @@ abstract class NetworkController extends BaseController
      *
      * @param Request $request
      *
-     * @return mixed
+     * @return JsonResponse
      */
-    public function index(Request $request): Response
+    public function index(Request $request): JsonResponse
     {
         $builder = $this->model;
         if ($request->filled(self::QUERY_PARAM) && !empty($this->queryAble) && is_array($this->queryAble)) {
@@ -422,13 +422,15 @@ abstract class NetworkController extends BaseController
 
         switch ($this->itemsPerPage) {
             case self::LIMIT_EMPTY:
-                $response = $this->response->collection($builder->take(0)->get(), $this->transformerInstance);
+                $fractalCollection = new Collection([], $this->transformerInstance);
                 break;
             case self::LIMIT_ALL:
-                $response = $this->response->collection($builder->get(), $this->transformerInstance);
+                $fractalCollection = new Collection($builder->get(), $this->transformerInstance);
                 break;
             default:
-                $response = $this->response->paginator($builder->paginate($this->itemsPerPage), $this->transformerInstance);
+                $paginator = $builder->paginate($this->itemsPerPage);
+                $fractalCollection = new Collection($paginator->getCollection(), $this->transformerInstance);
+                $fractalCollection->setPaginator(new IlluminatePaginatorAdapter($paginator));
                 break;
         }
 
@@ -444,12 +446,12 @@ abstract class NetworkController extends BaseController
                 $aggregations[$aggregation] = $this->{self::AGGREGATE_PARAM . '_' . $aggregation}($builder);
             }
             if (!empty($aggregations)) {
-                $response->addMeta(self::AGGREGATE_PARAM, $aggregations);
+                $fractalCollection->setMetaValue(self::AGGREGATE_PARAM, $aggregations);
             }
         }
 
         if (($request->filled(self::SHOW_META_PARAM))) {
-            $response->addMeta(
+            $fractalCollection->setMetaValue(
                 self::META_ROUTE_INFO_PARAM,
                 [
                     self::ORDER_BY_PARAM  => !empty($this->orderAble) ? $this->orderAble : [],
@@ -463,23 +465,24 @@ abstract class NetworkController extends BaseController
             );
         }
 
-        return $response;
+        return $this->responseHelper->fractalResourceToJsonResponse($fractalCollection);
     }
 
     /**
      * Returns a single item from the current model after a GET request
      *
      * @param int $id
-     * @return Response
+     * @return JsonResponse
      */
-    public function show(int $id = 0): Response
+    public function show(int $id = 0): JsonResponse
     {
         try {
-            $this->model = $this->model->findOrFail($id);
+            return $this->responseHelper->fractalResourceToJsonResponse(
+                new Item($this->model->findOrFail($id), $this->transformerInstance)
+            );
         } catch (ModelNotFoundException $e) {
-            $this->response->errorNotFound();
+            return $this->responseHelper->errorNotFoundJsonResponse();
         }
-        return $this->response->item($this->model, $this->transformerInstance);
     }
 
     /**
@@ -556,9 +559,9 @@ abstract class NetworkController extends BaseController
      *
      * @param Request $request
      *
-     * @return mixed
+     * @return JsonResponse
      */
-    public function store(Request $request): Response
+    public function store(Request $request): JsonResponse
     {
         if (!$this->isValidated) {
             $this->validateInput($request);
@@ -567,7 +570,7 @@ abstract class NetworkController extends BaseController
         $recoveredObject = $this->recoverDeletedObject($request);
         if (!empty($recoveredObject)) {
             $recoveredObject->loadMissing($this->model->getWith());
-            return $this->response->item($recoveredObject, $this->transformerInstance);
+            return $this->responseHelper->fractalResourceToJsonResponse(new Item($recoveredObject, $this->transformerInstance));
         }
 
         foreach ($this->model->getFillable() as $fillAble) {
@@ -581,7 +584,7 @@ abstract class NetworkController extends BaseController
         $this->model->save();
         $this->model->loadMissing($this->model->getWith());
 
-        return $this->response->item($this->model, $this->transformerInstance);
+        return $this->responseHelper->fractalResourceToJsonResponse(new Item($this->model, $this->transformerInstance));
     }
 
     /**
@@ -589,9 +592,9 @@ abstract class NetworkController extends BaseController
      *
      * @param Request $request
      * @param int $id
-     * @return Response
+     * @return JsonResponse
      */
-    public function update(Request $request, int $id): Response
+    public function update(Request $request, int $id): JsonResponse
     {
         if (!$this->isValidated) {
             $this->validateInput($request, $id);
@@ -600,7 +603,7 @@ abstract class NetworkController extends BaseController
         try {
             $this->model = $this->model->findOrFail($id);
         } catch (ModelNotFoundException $e) {
-            $this->response->errorNotFound();
+            return $this->responseHelper->errorNotFoundJsonResponse();
         }
 
         foreach ($this->model->getFillable() as $fillAble) {
@@ -616,7 +619,7 @@ abstract class NetworkController extends BaseController
         // Refresh model data to populate all required values
         $this->model->refresh();
 
-        return $this->response->item($this->model, $this->transformerInstance);
+        return $this->fractalResourceToJsonResponse(new Item($this->model, $this->transformerInstance));
     }
 
     /**
@@ -624,16 +627,16 @@ abstract class NetworkController extends BaseController
      *
      * @param int $id
      *
-     * @return Response
+     * @return JsonResponse
      * @throws Exception
      */
-    public function destroy(int $id): Response
+    public function destroy(int $id): JsonResponse
     {
         $this->model = $this->model->findOrFail($id);
 
         $this->model->delete();
 
-        return $this->response->noContent();
+        return new JsonResponse(null, 204);
     }
 
     /**

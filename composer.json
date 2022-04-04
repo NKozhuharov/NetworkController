@@ -11,7 +11,7 @@
     "files",
     "upload"
   ],
-  "description": "A basic API controller set for laravel, designed to work with dingo/api",
+  "description": "A basic API controller set for laravel",
   "authors": [
     {
       "name": "Nikola Kozhuharov",
@@ -20,16 +20,8 @@
     }
   ],
   "require": {
-    "php": "^7.2.5",
-    "fideloper/proxy": "^4.2",
-    "fruitcake/laravel-cors": "^1.0|^2.0",
-    "guzzlehttp/guzzle": "^6.3|^7.0",
-    "laravel/framework": "^7.0|^8.0",
-    "laravel/tinker": "^2.0",
-    "laravel/ui": "^2.0",
-    "spatie/laravel-permission": "^3.6",
-    "dingo/api": "^3.0",
-    "doctrine/dbal": "^2.12.1"
+    "php": "^7.2.5|^8.0.2",
+    "laravel/framework": "^7.0|^8.0||^9.0"
   },
   "autoload": {
     "psr-4": {

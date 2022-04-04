@@ -65,7 +65,7 @@ abstract class BaseModel extends Model
      *
      * @var array
      */
-    protected array $hidden = [
+    protected $hidden = [
         self::F_DELETED_AT,
     ];
 

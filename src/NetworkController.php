@@ -65,13 +65,6 @@ abstract class NetworkController extends BaseController
     protected BaseModel $model;
 
     /**
-     * If we are using a transformer apply the API transformer casing
-     *
-     * @var TransformerAbstract
-     */
-    protected TransformerAbstract $transformer;
-
-    /**
      * If we are using a transformer, create an instance here
      *
      * @var TransformerAbstract
@@ -162,11 +155,10 @@ abstract class NetworkController extends BaseController
 
         $this->model = new $this->modelClass;
 
-        $this->transformer = $this->model->getTransformer();
-        if (empty($this->transformer)) {
+        if (empty($this->model->getTransformerClass())) {
             throw new Exception("Model {$this->modelClass} needs a transformer in order to use NetworkController");
         }
-        $this->transformerInstance = new $this->transformer;
+        $this->transformerInstance = new $this->model->getTransformer();
 
         $this->responseHelper = new ResponseHelper();
 

@@ -56,9 +56,9 @@ abstract class BaseModel extends Model
     /**
      * If we are using a transformer apply the API transformer casing
      *
-     * @var TransformerAbstract
+     * @var string
      */
-    protected TransformerAbstract $transformer;
+    protected string $transformerClass;
 
     /**
      * The attributes that should be hidden for arrays.
@@ -75,11 +75,11 @@ abstract class BaseModel extends Model
     protected array $queryAble = [];
 
     /**
-     * @return TransformerAbstract
+     * @return string
      */
-    public function getTransformer(): TransformerAbstract
+    public function getTransformerClass(): string
     {
-        return $this->transformer;
+        return $this->transformerClass;
     }
 
     /**

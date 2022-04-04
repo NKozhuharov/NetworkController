@@ -3,14 +3,11 @@
 namespace Nevestul4o\NetworkController\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use League\Fractal\TransformerAbstract;
 use Nevestul4o\NetworkController\NetworkController;
 
 abstract class BaseModel extends Model
 {
-    use SoftDeletes;
-
     const DATA = 'data';
 
     const F_ID = 'id';
@@ -32,14 +29,14 @@ abstract class BaseModel extends Model
      *
      * @var array
      */
-    protected $orderAble;
+    protected array $orderAble;
 
     /**
      * In case we have values we can filter by, no filter default
      *
      * @var array
      */
-    protected $filterAble;
+    protected array $filterAble;
 
     /**
      * In case the object allows resolving of child objects, we can add them here.
@@ -49,48 +46,38 @@ abstract class BaseModel extends Model
      *
      * @var array
      */
-    protected $resolveAble;
+    protected array $resolveAble;
 
     /**
      * @var array
      */
-    protected $aggregateAble;
+    protected array $aggregateAble;
 
     /**
      * If we are using a transformer apply the API transformer casing
      *
      * @var TransformerAbstract
      */
-    protected $transformer;
+    protected TransformerAbstract $transformer;
 
     /**
      * The attributes that should be hidden for arrays.
      *
      * @var array
      */
-    protected $hidden = [
+    protected array $hidden = [
         self::F_DELETED_AT,
     ];
 
     /**
      * @var array ['column' => '','column' =>'*%','column' => '%*','column' => '%%'] query parameter fields
      */
-    protected $queryAble = [];
-
-    /**
-     * A quick method to get table names for migrations
-     *
-     * @return mixed
-     */
-    public static function getTableName()
-    {
-        return with(new static)->getTable();
-    }
+    protected array $queryAble = [];
 
     /**
      * @return TransformerAbstract
      */
-    public function getTransformer()
+    public function getTransformer(): TransformerAbstract
     {
         return $this->transformer;
     }
@@ -107,7 +94,7 @@ abstract class BaseModel extends Model
     /**
      * @return array
      */
-    public function getOrderAble()
+    public function getOrderAble(): array
     {
         return $this->orderAble ?? [];
     }
@@ -115,7 +102,7 @@ abstract class BaseModel extends Model
     /**
      * @return array
      */
-    public function getFilterAble()
+    public function getFilterAble(): array
     {
         return $this->filterAble ?? [];
     }
@@ -141,7 +128,7 @@ abstract class BaseModel extends Model
      *
      * @param string $relation - the new relation to add
      */
-    public function addToWith(string $relation)
+    public function addToWith(string $relation): void
     {
         $this->with[] = $relation;
     }
@@ -151,7 +138,7 @@ abstract class BaseModel extends Model
      *
      * @param string $key
      */
-    public function removeWith(string $key)
+    public function removeWith(string $key): void
     {
         unset($this->with[$key]);
     }
@@ -163,7 +150,7 @@ abstract class BaseModel extends Model
      *
      * @return array
      */
-    public function getWith()
+    public function getWith(): array
     {
         return array_keys($this->relationsToArray()) ?: $this->with; // This is still a hack for storing relationships by id
         // the system is unable to load them that way..
@@ -177,38 +164,5 @@ abstract class BaseModel extends Model
     public function getWithRelation(): array
     {
         return array_keys($this->relationsToArray());
-    }
-
-    /**
-     * Creates or updates an entry in the database, using the provided array.
-     * Initializes model fillables from the array elements.
-     *
-     * @param array $data
-     */
-    public function saveFromArray(array $data): void
-    {
-        foreach ($this->getFillable() as $fillable) {
-            if (isset($data[$fillable])) {
-                $this->$fillable = $data[$fillable];
-            }
-        }
-        $this->save();
-    }
-
-    /**
-     * Allows to store data for multiple languages in one attribute
-     *
-     * @param $attributeName
-     * @param $value
-     */
-    protected function setAttributeTranslation($attributeName, $value)
-    {
-        $attribute = [];
-        if ($this->{$attributeName}) {
-            $attribute = $this->{$attributeName};
-        }
-        $attribute[app()->getLocale()] = $value;
-
-        $this->attributes[$attributeName] = json_encode($attribute);
     }
 }

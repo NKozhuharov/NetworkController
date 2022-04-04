@@ -12,14 +12,14 @@ class ImagesController extends UploadController
      *
      * @var array
      */
-    private $supportedImageSizes = [];
+    private array $supportedImageSizes = [];
 
     /**
      * The path, where the resized images will be stored
      *
      * @var string
      */
-    private $resizedImagesPath = '';
+    private string $resizedImagesPath = '';
 
     /**
      * @return array

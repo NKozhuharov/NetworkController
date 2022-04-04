@@ -18,49 +18,49 @@ class UploadController extends BaseController
      *
      * @var string
      */
-    protected $filesArrayKey = 'files';
+    protected string $filesArrayKey = 'files';
 
     /**
      * Files with these MIME types will be considered images
      *
      * @var array
      */
-    protected $imageMimeTypes = ['image/jpeg', 'image/png'];
+    protected array $imageMimeTypes = ['image/jpeg', 'image/png'];
 
     /**
      * Request, containing this path, will return the original image
      *
      * @var string
      */
-    protected $imagesOrgPathName = 'org';
+    protected string $imagesOrgPathName = 'org';
 
     /**
      * This url part indicates, that the requested resource is an image
      *
      * @var string
      */
-    protected $imagesUrl = 'images';
+    protected string $imagesUrl = 'images';
 
     /**
      * This url part indicates, that the requested resource is a file (not an image) :D
      *
      * @var string
      */
-    protected $filesUrl = 'files';
+    protected string $filesUrl = 'files';
 
     /**
      * Path, where all files are uploaded
      *
      * @var string
      */
-    private $uploadsPath = '';
+    private string $uploadsPath = '';
 
     /**
      * Path, where all images are uploaded
      *
      * @var string
      */
-    private $imagesPath = '';
+    private string $imagesPath = '';
 
     /**
      * The key in the request, which contains the files
@@ -145,7 +145,7 @@ class UploadController extends BaseController
     }
 
     /**
-     * Checks if a directory exists. If it doesn't attempts to create it.
+     * Checks if a directory exists. If it doesn't attempt to create it.
      *
      * @param string $path
      * @throws Exception
@@ -224,7 +224,7 @@ class UploadController extends BaseController
     }
 
     /**
-     * Deletes a file, by it's link (or name)
+     * Deletes a file, by its link (or name)
      *
      * @param string $fileLink
      */

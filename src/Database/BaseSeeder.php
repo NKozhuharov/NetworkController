@@ -6,13 +6,13 @@ use Illuminate\Database\Seeder;
 
 abstract class BaseSeeder extends Seeder
 {
-    protected $objects = [];
+    protected array $objects = [];
 
-    protected $insertedObjects = [];
+    protected array $insertedObjects = [];
 
-    protected $lowCount = 0;
+    protected int $lowCount = 0;
 
-    protected $highCount = 20;
+    protected int $highCount = 20;
 
     /**
      * @return array

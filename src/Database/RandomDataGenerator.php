@@ -54,7 +54,7 @@ class RandomDataGenerator
     }
 
     /**
-     * Gets a string, representing an User Agent
+     * Gets a string, representing a User Agent
      *
      * @return string
      */
@@ -77,7 +77,7 @@ class RandomDataGenerator
      * @param array $array
      * @return mixed
      */
-    public static function getRandomElementFromArray(array $array)
+    public static function getRandomElementFromArray(array $array): mixed
     {
         $array = array_values($array);
 
@@ -92,7 +92,7 @@ class RandomDataGenerator
      * @param string $after
      * @return false|string
      */
-    public static function getRandomDate(string $before = '', string $after = '')
+    public static function getRandomDate(string $before = '', string $after = ''): bool|string
     {
         $min = 1;
         $max = time();
@@ -118,7 +118,7 @@ class RandomDataGenerator
      * @param string $after
      * @return false|string
      */
-    public static function getRandomDateTime(string $before = '', string $after = '')
+    public static function getRandomDateTime(string $before = '', string $after = ''): bool|string
     {
         $min = 1;
         $max = time();

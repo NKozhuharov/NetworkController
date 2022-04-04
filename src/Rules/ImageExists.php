@@ -10,7 +10,7 @@ class ImageExists implements Rule
     /**
      * @var string
      */
-    private $fileName = '';
+    private string $fileName = '';
 
     /**
      * Determine if the validation rule passes.

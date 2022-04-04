@@ -155,7 +155,8 @@ abstract class NetworkController extends BaseController
 
         $this->model = new $this->modelClass;
 
-        if (empty($this->model->getTransformerClass())) {
+        $transformerClass = $this->model->getTransformerClass();
+        if (empty($transformerClass)) {
             throw new Exception("Model {$this->modelClass} needs a transformer in order to use NetworkController");
         }
         $this->transformerInstance = new $this->model->getTransformerClass();

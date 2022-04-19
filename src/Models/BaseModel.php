@@ -165,4 +165,16 @@ abstract class BaseModel extends Model
     {
         return array_keys($this->relationsToArray());
     }
+
+    /**
+     * Check if the model can has translatable attributes.
+     * Requires Laravel Translatable package.
+     * @link https://docs.astrotomic.info/laravel-translatable/
+     *
+     * @return bool
+     */
+    public function isTranslatable(): bool
+    {
+        return trait_exists('\Astrotomic\Translatable\Translatable') && in_array('Astrotomic\Translatable\Translatable', class_uses($this));
+    }
 }

@@ -259,12 +259,21 @@ abstract class NetworkController extends BaseController
                 return;
             }
             $builder->whereHas($filterKey[0], function ($q) use ($filterKey, $filterValue, $filterOperator) {
+                //@todo - related models with translations
                 $q->where($filterKey[1], $filterOperator, $filterValue);
             });
             return;
         }
 
         if (in_array($filterKey, $this->filterAble, TRUE)) {
+            if ($this->model->isTranslatable() && $this->model->isTranslationAttribute($filterKey)) {
+                $builder->whereHas('translations', function ($q) use ($filterKey, $filterValue, $filterOperator) {
+                    $q->where($filterKey, $filterOperator, $filterValue)
+                        ->where('locale', app('Astrotomic\Translatable\Locales')->current());
+                });
+
+                return;
+            }
             $builder->where($filterKey, $filterOperator, $filterValue);
         }
     }

@@ -387,16 +387,18 @@ abstract class NetworkController extends BaseController
     {
         $builder = $this->model;
         if ($request->filled(self::QUERY_PARAM) && !empty($this->queryAble)) {
+            foreach ($this->queryAble as $column => $operators) {
+                if (is_numeric($column)) {
+                    throw new Exception('Invalid definition of queryable columns');
+                }
+                $this->joinTranslationModelTableIfNecessary($column, $builder);
+            }
+            //@todo - related models with translations
+
             $builder = $builder->where(
                 function ($query) use ($request) {
                     $queryWord = $request->get(self::QUERY_PARAM);
-                    $this->joinTranslationModelTableIfNecessary($queryWord, $builder);
                     foreach ($this->queryAble as $column => $operators) {
-                        if (is_numeric($column)) {
-                            throw new Exception('Invalid definition of queryable columns');
-                        }
-
-                        //@todo - related models with translations
                         if (method_exists($this->model, $column) && in_array($column, $this->model->getWith())) {
                             foreach ($this->model->{$column}()->getRelated()->getQueryAble() as $relatedQueryableKey => $relatedQueryableOperators) {
                                 $query->orWhereHas(

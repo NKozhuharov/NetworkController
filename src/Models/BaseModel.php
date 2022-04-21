@@ -152,8 +152,9 @@ abstract class BaseModel extends Model
      */
     public function getWith(): array
     {
-        return array_keys($this->relationsToArray()) ?: $this->with; // This is still a hack for storing relationships by id
-        // the system is unable to load them that way..
+        return array_keys($this->relationsToArray()) ?: $this->with;
+        // This is still a hack for storing relationships by id
+        // the system is unable to load them that way...
     }
 
     /**
@@ -176,5 +177,21 @@ abstract class BaseModel extends Model
     public function isTranslatable(): bool
     {
         return trait_exists('\Astrotomic\Translatable\Translatable') && in_array('Astrotomic\Translatable\Translatable', class_uses($this));
+    }
+
+    /**
+     * Get all translatable attributes from the model.
+     * Requires Laravel Translatable package.
+     * @link https://docs.astrotomic.info/laravel-translatable/
+     *
+     * @return array|null
+     */
+    public function getTranslatedAttributes(): ?array
+    {
+        if (!$this->isTranslatable()) {
+            return [];
+        }
+
+        return $this->translatedAttributes;
     }
 }

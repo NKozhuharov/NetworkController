@@ -15,7 +15,6 @@ use Illuminate\Routing\Controller as BaseController;
 use League\Fractal\Pagination\IlluminatePaginatorAdapter;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Resource\Item;
-use League\Fractal\Resource\ResourceAbstract;
 use League\Fractal\TransformerAbstract;
 use Nevestul4o\NetworkController\Models\BaseModel;
 
@@ -149,6 +148,15 @@ abstract class NetworkController extends BaseController
     protected ResponseHelper $responseHelper;
 
     /**
+     * Is the model translation table already joined.
+     * Used for translatable models. Requires Laravel Translatable package.
+     * @link https://docs.astrotomic.info/laravel-translatable/
+     *
+     * @var bool
+     */
+    private bool $translationModelTableJoined = FALSE;
+
+    /**
      * Create a new controller instance.
      * @throws Exception
      */
@@ -203,6 +211,40 @@ abstract class NetworkController extends BaseController
     }
 
     /**
+     * If the model and the provided attribute are translatable, the `model_translation` table needs to be joined,
+     * along with all translatable columns.
+     *
+     * @param  string  $attributeName
+     * @param $builder
+     * @return void
+     */
+    private function joinTranslationModelTableIfNecessary(string $attributeName, &$builder): void
+    {
+        if (
+            $this->translationModelTableJoined ||
+            !$this->model->isTranslatable() ||
+            !$this->model->isTranslationAttribute($attributeName)
+        ) {
+            return;
+        }
+
+        $selectQueryPart = [$this->model->getTable().'.*'];
+        foreach ($this->model->getTranslatedAttributes() as $translatedAttribute) {
+            $selectQueryPart[] = $this->model->translations()->getRelated()->getTable().'.'.$translatedAttribute;
+        }
+
+        $builder = $builder->leftJoin(
+            $this->model->translations()->getRelated()->getTable(),
+            $this->model->translations()->getQualifiedForeignKeyName(),
+            $this->model->translations()->getQualifiedParentKeyName()
+        )
+            ->where('locale', app('Astrotomic\Translatable\Locales')->current())
+            ->select($selectQueryPart);
+
+        $this->translationModelTableJoined = true;
+    }
+
+    /**
      * Searches the request for 'limit' parameter;
      * If it's available, overrides the default itemsPerPage property value
      *
@@ -250,7 +292,7 @@ abstract class NetworkController extends BaseController
      */
     protected function applyFilter(&$builder, string $filterKey, string $filterValue, string $filterOperator = '='): void
     {
-        if (strstr($filterKey, '.')) {
+        if (str_contains($filterKey, '.')) {
             $filterKey = explode('.', $filterKey);
             if (
                 !in_array($filterKey[0], $this->model->getWith(), TRUE)
@@ -266,14 +308,7 @@ abstract class NetworkController extends BaseController
         }
 
         if (in_array($filterKey, $this->filterAble, TRUE)) {
-            if ($this->model->isTranslatable() && $this->model->isTranslationAttribute($filterKey)) {
-                $builder->whereHas('translations', function ($q) use ($filterKey, $filterValue, $filterOperator) {
-                    $q->where($filterKey, $filterOperator, $filterValue)
-                        ->where('locale', app('Astrotomic\Translatable\Locales')->current());
-                });
-
-                return;
-            }
+            $this->joinTranslationModelTableIfNecessary($filterKey, $builder);
             $builder->where($filterKey, $filterOperator, $filterValue);
         }
     }
@@ -296,11 +331,16 @@ abstract class NetworkController extends BaseController
         $orderBy = $orderBy ? trim(strtolower($orderBy)) : $this->defaultOrder;
 
         if (in_array($orderBy, $this->orderAble)) {
+            if ($this->model->isTranslatable() && $this->model->isTranslationAttribute($orderBy)) {
+                $this->joinTranslationModelTableIfNecessary($orderBy, $builder);
+            }
+
             $builder = $builder->orderBy($orderBy, $sort);
             return;
         }
 
-        if (strstr($orderBy, '.')) {
+        //@todo - related models with translations
+        if (str_contains($orderBy, '.')) {
             $orderBy = explode('.', $orderBy);
             if (
                 count($orderBy) === 2
@@ -338,18 +378,25 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a collection of items from the current model after a GET request
      *
-     * @param Request $request
+     * @param  Request  $request
      *
      * @return JsonResponse
+     * @throws Exception
      */
     public function index(Request $request): JsonResponse
     {
         $builder = $this->model;
-        if ($request->filled(self::QUERY_PARAM) && !empty($this->queryAble) && is_array($this->queryAble)) {
+        if ($request->filled(self::QUERY_PARAM) && !empty($this->queryAble)) {
             $builder = $builder->where(
                 function ($query) use ($request) {
                     $queryWord = $request->get(self::QUERY_PARAM);
+                    $this->joinTranslationModelTableIfNecessary($queryWord, $builder);
                     foreach ($this->queryAble as $column => $operators) {
+                        if (is_numeric($column)) {
+                            throw new Exception('Invalid definition of queryable columns');
+                        }
+
+                        //@todo - related models with translations
                         if (method_exists($this->model, $column) && in_array($column, $this->model->getWith())) {
                             foreach ($this->model->{$column}()->getRelated()->getQueryAble() as $relatedQueryableKey => $relatedQueryableOperators) {
                                 $query->orWhereHas(
@@ -378,9 +425,6 @@ abstract class NetworkController extends BaseController
 
         $filters = $request->input(self::FILTERS_PARAM);
         if (is_array($filters) && !empty($filters)) {
-            if (!is_array($this->filterAble)) {
-                $this->filterAble = [$this->filterAble];
-            }
             foreach ($filters as $filterKey => $filterValue) {
                 if (substr_count($filterKey, '.') > 1) {
                     continue;

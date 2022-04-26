@@ -148,15 +148,6 @@ abstract class NetworkController extends BaseController
     protected ResponseHelper $responseHelper;
 
     /**
-     * Is the model translation table already joined.
-     * Used for translatable models. Requires Laravel Translatable package.
-     * @link https://docs.astrotomic.info/laravel-translatable/
-     *
-     * @var bool
-     */
-    private bool $translationModelTableJoined = FALSE;
-
-    /**
      * Create a new controller instance.
      * @throws Exception
      */
@@ -218,30 +209,37 @@ abstract class NetworkController extends BaseController
      * @param $builder
      * @return void
      */
-    private function joinTranslationModelTableIfNecessary(string $attributeName, &$builder): void
+    private function joinTranslationModelTableIfNecessary(BaseModel $model, string $attributeName, &$builder): void
     {
         if (
-            $this->translationModelTableJoined ||
-            !$this->model->isTranslatable() ||
-            !$this->model->isTranslationAttribute($attributeName)
+            !$model->isTranslatable() ||
+            !$model->isTranslationAttribute($attributeName)
         ) {
             return;
         }
 
-        $selectQueryPart = [$this->model->getTable().'.*'];
-        foreach ($this->model->getTranslatedAttributes() as $translatedAttribute) {
-            $selectQueryPart[] = $this->model->translations()->getRelated()->getTable().'.'.$translatedAttribute;
+        //check if this table is already joined
+        $joins = $builder->getQuery()->joins;
+        if (!empty($joins)) {
+            foreach ($builder->getQuery()->joins as $join) {
+                if ($join->table === $model->translations()->getRelated()->getTable()) {
+                    return;
+                }
+            }
+        }
+
+        $selectQueryPart = [$model->getTable().'.*'];
+        foreach ($model->getTranslatedAttributes() as $translatedAttribute) {
+            $selectQueryPart[] = $model->translations()->getRelated()->getTable().'.'.$translatedAttribute;
         }
 
         $builder = $builder->leftJoin(
-            $this->model->translations()->getRelated()->getTable(),
-            $this->model->translations()->getQualifiedForeignKeyName(),
-            $this->model->translations()->getQualifiedParentKeyName()
+            $model->translations()->getRelated()->getTable(),
+            $model->translations()->getQualifiedForeignKeyName(),
+            $model->translations()->getQualifiedParentKeyName()
         )
             ->where('locale', app('Astrotomic\Translatable\Locales')->current())
             ->select($selectQueryPart);
-
-        $this->translationModelTableJoined = true;
     }
 
     /**
@@ -300,15 +298,15 @@ abstract class NetworkController extends BaseController
             ) {
                 return;
             }
-            $builder->whereHas($filterKey[0], function ($q) use ($filterKey, $filterValue, $filterOperator) {
-                //@todo - related models with translations
-                $q->where($filterKey[1], $filterOperator, $filterValue);
+            $builder->whereHas($filterKey[0], function ($innerBuilder) use ($filterKey, $filterValue, $filterOperator) {
+                $this->joinTranslationModelTableIfNecessary($this->model->{$filterKey[0]}()->getModel(), $filterKey[1], $innerBuilder);
+                $innerBuilder->where($filterKey[1], $filterOperator, $filterValue);
             });
             return;
         }
 
         if (in_array($filterKey, $this->filterAble, TRUE)) {
-            $this->joinTranslationModelTableIfNecessary($filterKey, $builder);
+            $this->joinTranslationModelTableIfNecessary($this->model, $filterKey, $builder);
             $builder->where($filterKey, $filterOperator, $filterValue);
         }
     }
@@ -332,7 +330,7 @@ abstract class NetworkController extends BaseController
 
         if (in_array($orderBy, $this->orderAble)) {
             if ($this->model->isTranslatable() && $this->model->isTranslationAttribute($orderBy)) {
-                $this->joinTranslationModelTableIfNecessary($orderBy, $builder);
+                $this->joinTranslationModelTableIfNecessary($this->model, $orderBy, $builder);
             }
 
             $builder = $builder->orderBy($orderBy, $sort);
@@ -391,7 +389,7 @@ abstract class NetworkController extends BaseController
                 if (is_numeric($column)) {
                     throw new Exception('Invalid definition of queryable columns');
                 }
-                $this->joinTranslationModelTableIfNecessary($column, $builder);
+                $this->joinTranslationModelTableIfNecessary($this->model, $column, $builder);
             }
             //@todo - related models with translations
 

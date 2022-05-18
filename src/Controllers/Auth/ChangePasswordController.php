@@ -5,18 +5,16 @@ namespace Nevestul4o\NetworkController\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Models\Transformers\UserTransformer;
 use App\Http\Models\User;
-use Dingo\Api\Http\Response;
-use Dingo\Api\Routing\Helpers;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use League\Fractal\Resource\Item;
 use Nevestul4o\NetworkController\Models\BaseModel;
 
 class ChangePasswordController extends Controller
 {
-    use Helpers;
-
     const F_PASSWORD_CURRENT = 'password_current';
     const F_PASSWORD_CONFIRMATION = 'password_confirmation';
     const F_USER_ID = 'user_id';
@@ -25,10 +23,10 @@ class ChangePasswordController extends Controller
      * Allows the current user to change his password
      *
      * @param Request $request
-     * @return Response
+     * @return JsonResponse
      * @throws ValidationException
      */
-    public function changePassword(Request $request): Response
+    public function changePassword(Request $request): JsonResponse
     {
         $this->validate(
             $request,
@@ -47,17 +45,17 @@ class ChangePasswordController extends Controller
         $user->{User::F_PASSWORD} = Hash::make($request->{User::F_PASSWORD});
         $user->save();
 
-        return $this->response->item($user, new UserTransformer());
+        return new Item($user, new UserTransformer());
     }
 
     /**
      * Allows to change the password to the user, by its id (user_id)
      *
      * @param Request $request
-     * @return Response
+     * @return JsonResponse
      * @throws ValidationException
      */
-    public function changePasswordForced(Request $request): Response
+    public function changePasswordForced(Request $request): JsonResponse
     {
         $this->validate(
             $request,
@@ -73,6 +71,6 @@ class ChangePasswordController extends Controller
         $user->{User::F_PASSWORD} = Hash::make($request->{User::F_PASSWORD});
         $user->save();
 
-        return $this->response->item($user, new UserTransformer());
+        return new Item($user, new UserTransformer());
     }
 }

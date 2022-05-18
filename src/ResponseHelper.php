@@ -32,4 +32,14 @@ class ResponseHelper
     {
         return new JsonResponse('Not found', 404);
     }
+
+    /**
+     * Get a JsonResponse instance for 204
+     *
+     * @return JsonResponse
+     */
+    public function noContentResponse(): JsonResponse
+    {
+        return new JsonResponse(null, 204);
+    }
 }

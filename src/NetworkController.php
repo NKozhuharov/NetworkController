@@ -687,7 +687,7 @@ abstract class NetworkController extends BaseController
 
         $this->model->delete();
 
-        return new JsonResponse(null, 204);
+        return $this->responseHelper->noContentResponse();
     }
 
     /**

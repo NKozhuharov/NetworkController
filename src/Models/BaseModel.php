@@ -181,6 +181,16 @@ abstract class BaseModel extends Model
     }
 
     /**
+     * Check it fhe model is using the Laravel's SoftDeletes trait
+     *
+     * @return bool
+     */
+    public function isSoftDeletable(): bool
+    {
+        return in_array('Illuminate\Database\Eloquent\SoftDeletes', class_uses($this));
+    }
+
+    /**
      * Get all translatable attributes from the model.
      * Requires Laravel Translatable package.
      * @link https://docs.astrotomic.info/laravel-translatable/

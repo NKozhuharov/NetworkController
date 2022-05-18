@@ -470,9 +470,9 @@ abstract class NetworkController extends BaseController
         }
         unset($filters);
 
-        if ($request->get(self::WITH_DELETED)) {
+        if ($request->get(self::WITH_DELETED) && $this->model->isSoftDeletable()) {
             $builder = $builder->withTrashed();
-        } elseif ($request->get(self::ONLY_DELETED)) {
+        } elseif ($request->get(self::ONLY_DELETED) && $this->model->isSoftDeletable()) {
             $builder = $builder->onlyTrashed();
         }
 
@@ -623,10 +623,14 @@ abstract class NetworkController extends BaseController
             $this->validateInput($request);
         }
 
-        $recoveredObject = $this->recoverDeletedObject($request);
-        if (!empty($recoveredObject)) {
-            $recoveredObject->loadMissing($this->model->getWith());
-            return $this->responseHelper->fractalResourceToJsonResponse(new Item($recoveredObject, $this->transformerInstance));
+        if ($this->model->isSoftDeletable()) {
+            $recoveredObject = $this->recoverDeletedObject($request);
+            if (!empty($recoveredObject)) {
+                $recoveredObject->loadMissing($this->model->getWith());
+                return $this->responseHelper->fractalResourceToJsonResponse(
+                    new Item($recoveredObject, $this->transformerInstance)
+                );
+            }
         }
 
         foreach ($this->model->getFillable() as $fillAble) {

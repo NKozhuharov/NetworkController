@@ -6,7 +6,7 @@
     "laravel",
     "library",
     "api",
-    "dingo",
+    "fractal",
     "images",
     "files",
     "upload"
@@ -21,7 +21,8 @@
   ],
   "require": {
     "php": "^8.0.2",
-    "laravel/framework": "^9.0"
+    "laravel/framework": "^9.0",
+    "league/fractal": "^0.19.0"
   },
   "autoload": {
     "psr-4": {

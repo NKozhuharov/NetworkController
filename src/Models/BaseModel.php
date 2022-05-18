@@ -5,6 +5,7 @@ namespace Nevestul4o\NetworkController\Models;
 use Illuminate\Database\Eloquent\Model;
 use League\Fractal\TransformerAbstract;
 use Nevestul4o\NetworkController\NetworkController;
+use Nevestul4o\NetworkController\Transformers\GenericTransformer;
 
 abstract class BaseModel extends Model
 {
@@ -54,11 +55,11 @@ abstract class BaseModel extends Model
     protected array $aggregateAble;
 
     /**
-     * If we are using a transformer apply the API transformer casing
+     * The API fractal transformer class
      *
      * @var string
      */
-    protected string $transformerClass;
+    protected string $transformerClass = GenericTransformer::class;
 
     /**
      * The attributes that should be hidden for arrays.

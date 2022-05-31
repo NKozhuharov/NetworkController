@@ -15,6 +15,13 @@ class LoginController extends Controller
 {
     use AuthenticatesUsers;
 
+    private ResponseHelper $responseHelper;
+
+    public function __construct()
+    {
+        $this->responseHelper = new ResponseHelper();
+    }
+
     /**
      * @param Request $request
      * @param $user
@@ -22,26 +29,25 @@ class LoginController extends Controller
      */
     protected function authenticated(Request $request, $user): JsonResponse
     {
-        return new Item($user, new UserTransformer);
+        return $this->responseHelper->fractalResourceToJsonResponse(new Item($user, new UserTransformer));
     }
 
     /**
      * @param Request $request
-     * @return Response
+     * @return JsonResponse
      */
     protected function loggedOut(Request $request): JsonResponse
     {
-        $responseHelper = new ResponseHelper();
-        return $responseHelper->noContentResponse();
+        return $this->responseHelper->noContentResponse();
     }
 
     /**
-     * Get the currently logged in user data
+     * Get the currently logged-in user data
      *
      * @return JsonResponse
      */
-    protected function getCurrentUser(): JsonResponse
+    public function getCurrentUser(): JsonResponse
     {
-        return new Item(Auth::user(), new UserTransformer());
+        return $this->responseHelper->fractalResourceToJsonResponse(new Item(Auth::user(), new UserTransformer));
     }
 }

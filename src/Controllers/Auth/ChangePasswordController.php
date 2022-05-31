@@ -12,12 +12,20 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use League\Fractal\Resource\Item;
 use Nevestul4o\NetworkController\Models\BaseModel;
+use Nevestul4o\NetworkController\ResponseHelper;
 
 class ChangePasswordController extends Controller
 {
     const F_PASSWORD_CURRENT = 'password_current';
     const F_PASSWORD_CONFIRMATION = 'password_confirmation';
     const F_USER_ID = 'user_id';
+
+    private ResponseHelper $responseHelper;
+
+    public function __construct()
+    {
+        $this->responseHelper = new ResponseHelper();
+    }
 
     /**
      * Allows the current user to change his password
@@ -45,7 +53,7 @@ class ChangePasswordController extends Controller
         $user->{User::F_PASSWORD} = Hash::make($request->{User::F_PASSWORD});
         $user->save();
 
-        return new Item($user, new UserTransformer());
+        return $this->responseHelper->fractalResourceToJsonResponse(new Item($user, new UserTransformer()));
     }
 
     /**
@@ -71,6 +79,6 @@ class ChangePasswordController extends Controller
         $user->{User::F_PASSWORD} = Hash::make($request->{User::F_PASSWORD});
         $user->save();
 
-        return new Item($user, new UserTransformer());
+        return $this->responseHelper->fractalResourceToJsonResponse(new Item($user, new UserTransformer()));
     }
 }

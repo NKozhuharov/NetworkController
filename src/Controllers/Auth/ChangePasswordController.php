@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use League\Fractal\Resource\Item;
 use Nevestul4o\NetworkController\Models\BaseModel;
-use Nevestul4o\NetworkController\ResponseHelper;
+use Nevestul4o\NetworkController\JsonResponseHelper;
 
 class ChangePasswordController extends Controller
 {
@@ -20,11 +20,11 @@ class ChangePasswordController extends Controller
     const F_PASSWORD_CONFIRMATION = 'password_confirmation';
     const F_USER_ID = 'user_id';
 
-    private ResponseHelper $responseHelper;
+    private JsonResponseHelper $responseHelper;
 
-    public function __construct()
+    public function __construct(JsonResponseHelper $responseHelper)
     {
-        $this->responseHelper = new ResponseHelper();
+        $this->responseHelper = $responseHelper;
     }
 
     /**

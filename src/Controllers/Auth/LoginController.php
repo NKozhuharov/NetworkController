@@ -9,17 +9,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use League\Fractal\Resource\Item;
-use Nevestul4o\NetworkController\ResponseHelper;
+use Nevestul4o\NetworkController\JsonResponseHelper;
 
 class LoginController extends Controller
 {
     use AuthenticatesUsers;
 
-    private ResponseHelper $responseHelper;
+    private JsonResponseHelper $responseHelper;
 
-    public function __construct()
+    public function __construct(JsonResponseHelper $responseHelper)
     {
-        $this->responseHelper = new ResponseHelper();
+        $this->responseHelper = $responseHelper;
     }
 
     /**

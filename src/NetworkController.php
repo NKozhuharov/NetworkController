@@ -143,9 +143,9 @@ abstract class NetworkController extends BaseController
     /**
      * An instance of ResponseHelper
      *
-     * @var ResponseHelper
+     * @var JsonResponseHelper
      */
-    protected ResponseHelper $responseHelper;
+    protected JsonResponseHelper $responseHelper;
 
     /**
      * Create a new controller instance.
@@ -165,7 +165,7 @@ abstract class NetworkController extends BaseController
         }
         $this->transformerInstance = new $transformerClass;
 
-        $this->responseHelper = new ResponseHelper();
+        $this->responseHelper = new JsonResponseHelper();
 
         $this->orderAble = $this->model->getOrderAble();
         $this->filterAble = $this->model->getFilterAble();

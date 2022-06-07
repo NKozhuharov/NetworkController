@@ -48,7 +48,7 @@ class ChangePasswordController extends Controller
         /** @var User $user */
         $user = Auth::user();
         if (!Hash::check($request->{self::F_PASSWORD_CURRENT}, $user->getAuthPassword())) {
-            throw ValidationException::withMessages(["Wrong current password"]);
+            throw ValidationException::withMessages([self::F_PASSWORD_CURRENT => trans('auth.password')]);
         }
         $user->{User::F_PASSWORD} = Hash::make($request->{User::F_PASSWORD});
         $user->save();

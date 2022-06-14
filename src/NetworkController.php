@@ -73,9 +73,9 @@ abstract class NetworkController extends BaseController
     /**
      * How many items to show per page
      *
-     * @var int
+     * @var int|string
      */
-    protected int $itemsPerPage = 20;
+    protected int|string $itemsPerPage = 20;
 
     /**
      * Ignore second validation when using parent:: method

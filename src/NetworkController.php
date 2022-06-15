@@ -293,7 +293,7 @@ abstract class NetworkController extends BaseController
         if (str_contains($filterKey, '.')) {
             $filterKey = explode('.', $filterKey);
             if (
-                !in_array($filterKey[0], $this->model->getWith(), TRUE)
+                !in_array($filterKey[0], $this->model->getResolveAble(), TRUE)
                 || !in_array($filterKey[1], $this->model->{$filterKey[0]}()->getRelated()->getFilterable(), TRUE)
             ) {
                 return;

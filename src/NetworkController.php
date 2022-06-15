@@ -527,14 +527,32 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a single item from the current model after a GET request
      *
-     * @param int $id
+     * @param int|string $id
      * @return JsonResponse
      */
-    public function show(int $id = 0): JsonResponse
+    public function show(int|string $id): JsonResponse
     {
         try {
+            if (!$this->model->isSlugAble() || is_numeric($id)) {
+                return $this->responseHelper->fractalResourceToJsonResponse(
+                    new Item($this->model->findOrFail($id), $this->transformerInstance)
+                );
+            }
+
+            if ($this->model->isTranslatable()) {
+                return $this->responseHelper->fractalResourceToJsonResponse(
+                    new Item(
+                        $this->model::whereTranslation($this->model->getSlugPropertyName(), $id)->firstOrFail(),
+                        $this->transformerInstance
+                    )
+                );
+            }
+
             return $this->responseHelper->fractalResourceToJsonResponse(
-                new Item($this->model->findOrFail($id), $this->transformerInstance)
+                new Item(
+                    $this->model::where($this->model->getSlugPropertyName(), $id)->firstOrFail(),
+                    $this->transformerInstance
+                )
             );
         } catch (ModelNotFoundException $e) {
             return $this->responseHelper->errorNotFoundJsonResponse();

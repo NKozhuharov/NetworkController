@@ -62,6 +62,20 @@ abstract class BaseModel extends Model
     protected string $transformerClass = GenericTransformer::class;
 
     /**
+     * Defines if the model has a slug
+     *
+     * @var bool
+     */
+    protected bool $isSlugAble = false;
+
+    /**
+     * Defines the model slug property/column name
+     *
+     * @var string
+     */
+    protected string $slugPropertyName = 'slug';
+
+    /**
      * The attributes that should be hidden for arrays.
      *
      * @var array
@@ -191,6 +205,16 @@ abstract class BaseModel extends Model
     }
 
     /**
+     * Check if the model has a slug property
+     *
+     * @return bool
+     */
+    public function isSlugAble(): bool
+    {
+        return $this->isSlugAble;
+    }
+
+    /**
      * Get all translatable attributes from the model.
      * Requires Laravel Translatable package.
      * @link https://docs.astrotomic.info/laravel-translatable/
@@ -204,5 +228,15 @@ abstract class BaseModel extends Model
         }
 
         return $this->translatedAttributes;
+    }
+
+    /**
+     * What is the slug property name of the model
+     *
+     * @return string
+     */
+    public function getSlugPropertyName(): string
+    {
+        return $this->slugPropertyName;
     }
 }

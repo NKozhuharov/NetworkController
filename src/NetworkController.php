@@ -679,7 +679,7 @@ abstract class NetworkController extends BaseController
         // Refresh model data to populate all required values
         $this->model->refresh();
 
-        return $this->fractalResourceToJsonResponse(new Item($this->model, $this->transformerInstance));
+        return $this->responseHelper->fractalResourceToJsonResponse(new Item($this->model, $this->transformerInstance));
     }
 
     /**

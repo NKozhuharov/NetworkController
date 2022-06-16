@@ -12,30 +12,21 @@ class ImagesController extends UploadController
      *
      * @var array
      */
-    private array $supportedImageSizes = [];
+    protected array $supportedImageSizes;
 
     /**
      * The path, where the resized images will be stored
      *
      * @var string
      */
-    private string $resizedImagesPath = '';
+    protected string $resizedImagesPath;
 
     /**
-     * @return array
+     * Set to false to keep the metadata of the cached images
+     *
+     * @var bool
      */
-    public function getSupportedImageSizes(): array
-    {
-        return $this->supportedImageSizes;
-    }
-
-    /**
-     * @return string
-     */
-    public function getResizedImagesPath(): string
-    {
-        return $this->resizedImagesPath;
-    }
+    protected bool $removeMetadata;
 
     /**
      * ImagesController constructor.
@@ -76,6 +67,8 @@ class ImagesController extends UploadController
         $this->resizedImagesPath = base_path() . '/../' . $this->resizedImagesPath;
 
         $this->ensureDirectoryExists($this->resizedImagesPath);
+
+        $this->removeMetadata = env('IMAGES_REMOVE_METADATA' , TRUE);
     }
 
     /**
@@ -112,13 +105,12 @@ class ImagesController extends UploadController
         $imagick = new \Imagick($originalImgFullPath);
         $ratio = $requestedWidth / $imagick->getImageWidth();
 
-        $imagick->resizeImage(
-            $requestedWidth,
-            $imagick->getImageHeight() * $ratio,
-            $imagick::FILTER_LANCZOS,
-            0.9,
-            TRUE
-        );
+        $imagick->resizeImage($requestedWidth, $imagick->getImageHeight() * $ratio, $imagick::FILTER_LANCZOS, 1);
+
+        if ($this->removeMetadata) {
+            $imagick->stripImage();
+        }
+
         $imagick->writeImage($resizedImageFullPath);
 
         return response()->file($resizedImageFullPath);

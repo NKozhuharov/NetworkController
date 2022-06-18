@@ -15,6 +15,7 @@ use Illuminate\Routing\Controller as BaseController;
 use League\Fractal\Pagination\IlluminatePaginatorAdapter;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Resource\Item;
+use League\Fractal\Resource\ResourceAbstract;
 use League\Fractal\TransformerAbstract;
 use Nevestul4o\NetworkController\Models\BaseModel;
 
@@ -374,6 +375,28 @@ abstract class NetworkController extends BaseController
     }
 
     /**
+     * Populates the meta property of the fractal resource
+     *
+     * @param  ResourceAbstract  $resource
+     * @return void
+     */
+    protected function setFractalResourceMetaValue(ResourceAbstract $resource): void
+    {
+        $resource->setMetaValue(
+            self::META_ROUTE_INFO_PARAM,
+            [
+                self::ORDER_BY_PARAM  => !empty($this->orderAble) ? $this->orderAble : [],
+                self::SORT_PARAM      => [self::SORT_ASC, self::SORT_DESC],
+                self::LIMIT_PARAM     => [self::LIMIT_ALL, self::LIMIT_EMPTY],
+                self::FILTERS_PARAM   => !empty($this->filterAble) ? $this->filterAble : [],
+                self::QUERY_PARAM     => !empty($this->queryAble) ? $this->queryAble : [],
+                self::RESOLVE_PARAM   => !empty($this->resolveAble) ? $this->resolveAble : [],
+                self::AGGREGATE_PARAM => !empty($this->aggregateAble) ? $this->aggregateAble : [],
+            ]
+        );
+    }
+
+    /**
      * Returns a collection of items from the current model after a GET request
      *
      * @param  Request  $request
@@ -506,19 +529,8 @@ abstract class NetworkController extends BaseController
             }
         }
 
-        if (($request->filled(self::SHOW_META_PARAM))) {
-            $fractalCollection->setMetaValue(
-                self::META_ROUTE_INFO_PARAM,
-                [
-                    self::ORDER_BY_PARAM  => !empty($this->orderAble) ? $this->orderAble : [],
-                    self::SORT_PARAM      => [self::SORT_ASC, self::SORT_DESC],
-                    self::LIMIT_PARAM     => [self::LIMIT_ALL, self::LIMIT_EMPTY],
-                    self::FILTERS_PARAM   => !empty($this->filterAble) ? $this->filterAble : [],
-                    self::QUERY_PARAM     => !empty($this->queryAble) ? $this->queryAble : [],
-                    self::RESOLVE_PARAM   => !empty($this->resolveAble) ? $this->resolveAble : [],
-                    self::AGGREGATE_PARAM => !empty($this->aggregateAble) ? $this->aggregateAble : [],
-                ]
-            );
+        if ($request->filled(self::SHOW_META_PARAM)) {
+            $this->setFractalResourceMetaValue($fractalCollection);
         }
 
         return $this->responseHelper->fractalResourceToJsonResponse($fractalCollection);
@@ -527,34 +539,33 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a single item from the current model after a GET request
      *
-     * @param int|string $id
+     * @param  int|string  $id
+     * @param  Request  $request
      * @return JsonResponse
      */
-    public function show(int|string $id): JsonResponse
+    public function show(int|string $id, Request $request): JsonResponse
     {
         try {
             if (!$this->model->isSlugAble() || is_numeric($id)) {
-                return $this->responseHelper->fractalResourceToJsonResponse(
-                    new Item($this->model->findOrFail($id), $this->transformerInstance)
+                $fractalItem = new Item($this->model->findOrFail($id), $this->transformerInstance);
+            } elseif ($this->model->isTranslatable()) {
+                $fractalItem = new Item(
+                    $this->model::whereTranslation($this->model->getSlugPropertyName(), $id)->firstOrFail(),
+                    $this->transformerInstance
                 );
-            }
-
-            if ($this->model->isTranslatable()) {
-                return $this->responseHelper->fractalResourceToJsonResponse(
-                    new Item(
-                        $this->model::whereTranslation($this->model->getSlugPropertyName(), $id)->firstOrFail(),
-                        $this->transformerInstance
-                    )
-                );
-            }
-
-            return $this->responseHelper->fractalResourceToJsonResponse(
-                new Item(
+            } else {
+                $fractalItem = new Item(
                     $this->model::where($this->model->getSlugPropertyName(), $id)->firstOrFail(),
                     $this->transformerInstance
-                )
-            );
-        } catch (ModelNotFoundException $e) {
+                );
+            }
+
+            if ($request->filled(self::SHOW_META_PARAM)) {
+                $this->setFractalResourceMetaValue($fractalItem);
+            }
+
+            return $this->responseHelper->fractalResourceToJsonResponse($fractalItem);
+        } catch (ModelNotFoundException $exception) {
             return $this->responseHelper->errorNotFoundJsonResponse();
         }
     }
@@ -680,7 +691,7 @@ abstract class NetworkController extends BaseController
 
         try {
             $this->model = $this->model->findOrFail($id);
-        } catch (ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $exception) {
             return $this->responseHelper->errorNotFoundJsonResponse();
         }
 

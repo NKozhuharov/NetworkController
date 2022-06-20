@@ -30,6 +30,17 @@ class JsonResponseHelper
     }
 
     /**
+     * Get a standard JSON response (['data' => $data]) for the provided variable
+     *
+     * @param $data
+     * @return JsonResponse
+     */
+    public function standardDataResponse($data): JsonResponse
+    {
+        return new JsonResponse(['data' => $data]);
+    }
+
+    /**
      * Get a JsonResponse instance for 404 errors
      *
      * @return JsonResponse

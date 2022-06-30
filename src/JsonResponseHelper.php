@@ -43,11 +43,15 @@ class JsonResponseHelper
     /**
      * Get a JsonResponse instance for 404 errors
      *
+     * @param  string  $message
      * @return JsonResponse
      */
-    public function errorNotFoundJsonResponse(): JsonResponse
+    public function errorNotFoundJsonResponse(string $message = ''): JsonResponse
     {
-        return new JsonResponse('Not found', 404);
+        if (empty($message)) {
+            $message = 'Not Found';
+        }
+        return new JsonResponse($message, 404);
     }
 
     /**

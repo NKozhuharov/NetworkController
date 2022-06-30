@@ -4,6 +4,7 @@ namespace Nevestul4o\NetworkController\Controllers;
 
 use Exception;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ImagesController extends UploadController
 {
@@ -80,12 +81,12 @@ class ImagesController extends UploadController
     public function getImage(string $requestedWidth, string $imgName): BinaryFileResponse
     {
         if (!in_array($requestedWidth, $this->supportedImageSizes)) {
-            throw new Exception("Requested width {$requestedWidth} is not supported!");
+            throw new NotFoundHttpException("Requested width {$requestedWidth} is not supported!");
         }
 
         $originalImgFullPath = $this->getImagesPath() . '/' . $imgName;
         if (!file_exists($originalImgFullPath)) {
-            throw new Exception("{$imgName} does not exist!");
+            throw new NotFoundHttpException("{$imgName} does not exist!");
         }
 
         if ($requestedWidth === $this->imagesOrgPathName) {

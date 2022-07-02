@@ -4,6 +4,7 @@ namespace Nevestul4o\NetworkController;
 
 use BadMethodCallException;
 use Exception;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -58,11 +59,11 @@ abstract class NetworkController extends BaseController
     protected string $modelClass;
 
     /**
-     * An instance of the model
+     * An instance of the model. Allows overriding of the model with a Builder to apply commands to the Index function
      *
-     * @var BaseModel
+     * @var Builder|BaseModel
      */
-    protected BaseModel $model;
+    protected Builder|BaseModel $model;
 
     /**
      * If we are using a transformer, create an instance here

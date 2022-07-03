@@ -1,11 +1,11 @@
 ## NetworkController
 
 * All controllers should extend it.
-* For example, if we need ot add the `EmployeeController`, to the `employee` endpoint, add the following entry in
-  the `api.php` in the routes folder:
+* For example, if we need to link the `EmployeeController`, with the `\api\employee` endpoint, add the following entry in
+  the `api.php` in the `\routes` folder:
 
 ```php
-    $api->resource('employee', 'EmployeeController');
+    Route::resource('employee', EmployeeController::class);
 ````
 
 ## BaseModel
@@ -23,7 +23,7 @@
 
 ## FileUploadController and ImageUploadController
 
-Add the following code in the `api.php` in the routes folder:
+Add the following code in the `api.php` in the `\routes` folder:
 
 ```php
     use Nevestul4o\NetworkController\Controllers\ImagesController;
@@ -41,6 +41,11 @@ IMAGES_PATH=uploads/images
 IMAGES_RESIZED_PATH=cache/images
 IMAGES_SUPPORTED_SIZES=300,600,900
 IMAGES_REMOVE_METADATA=TRUE
+```
+
+There is a command that allows to remove all resized images:
+```shell
+php artisan network-controller:images-clear-cache
 ```
 
 ## LoginController and ChangePasswordController

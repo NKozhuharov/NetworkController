@@ -28,5 +28,12 @@
     "psr-4": {
       "Nevestul4o\\NetworkController\\": "src/"
     }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Nevestul4o\\NetworkController\\NetworkControllerServiceProvider"
+      ]
+    }
   }
 }

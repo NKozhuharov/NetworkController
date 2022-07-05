@@ -123,11 +123,25 @@ abstract class NetworkController extends BaseController
     protected array $filterAble;
 
     /**
+     * An array of filters, which will always be applied
+     *
+     * @var array
+     */
+    protected array $defaultFilters = [];
+
+    /**
      * Contains all related models, which can be resolved, when obtaining a collection
      *
      * @var array
      */
     protected array $resolveAble;
+
+    /**
+     * An array of relations, which will always be resolved
+     *
+     * @var array
+     */
+    protected array $defaultResolve = [];
 
     /**
      * Contains all columns, which can be used to query a collection
@@ -184,8 +198,8 @@ abstract class NetworkController extends BaseController
         $this->getItemsPerPageFromGet();
 
         $approvedResolve = [];
-        $resolve = request()->input(self::RESOLVE_PARAM);
-        if (is_array($resolve) && !empty($resolve)) {
+        $resolve = array_merge($this->defaultResolve, request()->input(self::RESOLVE_PARAM, []));
+        if (!empty($resolve)) {
             foreach ($resolve as $resolveValue) {
                 if (in_array($resolveValue, $this->resolveAble, TRUE)) {
                     try {
@@ -453,8 +467,8 @@ abstract class NetworkController extends BaseController
 
         $this->applySortAndOrder($builder, $request->get(self::SORT_PARAM), $request->get(self::ORDER_BY_PARAM));
 
-        $filters = $request->input(self::FILTERS_PARAM);
-        if (is_array($filters) && !empty($filters)) {
+        $filters = array_merge($this->defaultFilters, $request->input(self::FILTERS_PARAM, []));
+        if (!empty($filters)) {
             foreach ($filters as $filterKey => $filterValue) {
                 if (substr_count($filterKey, '.') > 1) {
                     continue;

@@ -42,6 +42,7 @@ abstract class NetworkController extends BaseController
     const LIMIT_ALL = 'all';
     const LIMIT_EMPTY = 'empty';
 
+    const FILTER_NOT = 'not';
     const FILTER_GREATER_THAN = 'gt';
     const FILTER_LESSER_THAN = 'lt';
     const FILTER_GREATER_THAN_OR_EQUALS = 'gte';
@@ -462,6 +463,9 @@ abstract class NetworkController extends BaseController
                 if (is_array($filterValue)) {
                     foreach ($filterValue as $requestOperator => $value) {
                         switch ($requestOperator) {
+                            case self::FILTER_NOT:
+                                $this->applyFilter($builder, $filterKey, $value, '!=');
+                                break;
                             case self::FILTER_GREATER_THAN:
                                 $this->applyFilter($builder, $filterKey, $value, '>');
                                 break;

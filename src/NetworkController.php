@@ -556,28 +556,32 @@ abstract class NetworkController extends BaseController
     }
 
     /**
-     * Returns a single item from the current model after a GET request
+     * Select an entry from the database, using the provided id or slug (if the model is slug-able)
      *
      * @param  int|string  $id
+     * @return Model
+     */
+    protected function getByIdOrSlug(int|string $id): Model
+    {
+        if (!$this->model->isSlugAble() || is_numeric($id)) {
+            return $this->model->findOrFail($id);
+        } elseif ($this->model->isTranslatable()) {
+            return $this->model::whereTranslation($this->model->getSlugPropertyName(), $id)->firstOrFail();
+        }
+        return $this->model::where($this->model->getSlugPropertyName(), $id)->firstOrFail();
+    }
+
+    /**
+     * Returns a single item from the current model after a GET request
+     *
      * @param  Request  $request
+     * @param  int|string  $id
      * @return JsonResponse
      */
-    public function show(int|string $id, Request $request): JsonResponse
+    public function show(Request $request, int|string $id): JsonResponse
     {
         try {
-            if (!$this->model->isSlugAble() || is_numeric($id)) {
-                $fractalItem = new Item($this->model->findOrFail($id), $this->transformerInstance);
-            } elseif ($this->model->isTranslatable()) {
-                $fractalItem = new Item(
-                    $this->model::whereTranslation($this->model->getSlugPropertyName(), $id)->firstOrFail(),
-                    $this->transformerInstance
-                );
-            } else {
-                $fractalItem = new Item(
-                    $this->model::where($this->model->getSlugPropertyName(), $id)->firstOrFail(),
-                    $this->transformerInstance
-                );
-            }
+            $fractalItem = new Item($this->getByIdOrSlug($id), $this->transformerInstance);
 
             if ($request->filled(self::SHOW_META_PARAM)) {
                 $this->setFractalResourceMetaValue($fractalItem);
@@ -733,18 +737,20 @@ abstract class NetworkController extends BaseController
     /**
      * Deletes an item from the current model after a DELETE request
      *
-     * @param int $id
+     * @param int|string $id
      *
      * @return JsonResponse
      * @throws Exception
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(int|string $id): JsonResponse
     {
-        $this->model = $this->model->findOrFail($id);
+        try {
+            $this->getByIdOrSlug($id)->delete();
 
-        $this->model->delete();
-
-        return $this->responseHelper->noContentResponse();
+            return $this->responseHelper->noContentResponse();
+        } catch (ModelNotFoundException $exception) {
+            return $this->responseHelper->errorNotFoundJsonResponse();
+        }
     }
 
     /**

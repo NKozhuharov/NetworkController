@@ -36,6 +36,8 @@ class ChangePasswordController extends Controller
      *
      * @note - add translations to the validation.php file -> attributes -> new password
      * @note - add translations to the auth.php file -> password
+     * @note - add translations to the auth.php file -> wrong_password_confirmation
+     * @note - add translations to the auth.php file -> new_password_cannot_math_the_current_password
      * @param Request $request
      * @return JsonResponse
      * @throws ValidationException
@@ -64,6 +66,10 @@ class ChangePasswordController extends Controller
         if (!Hash::check($request->{self::F_PASSWORD_CURRENT}, $user->getAuthPassword())) {
             throw ValidationException::withMessages([self::F_PASSWORD_CURRENT => trans('auth.password')]);
         }
+        if (Hash::check($request->{User::F_PASSWORD}, $user->getAuthPassword())) {
+            throw ValidationException::withMessages([User::F_PASSWORD => trans('auth.new_password_cannot_math_the_current_password')]);
+        }
+
         $user->{User::F_PASSWORD} = Hash::make($request->{User::F_PASSWORD});
         $user->save();
 

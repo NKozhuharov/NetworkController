@@ -1,5 +1,11 @@
 ## NetworkController
 
+Use the
+```shell
+php artisan vendor:publish
+```
+command to publish the `NetworkController` configuration.
+
 * All controllers should extend it.
 * For example, if we need to link the `EmployeeController`, with the `\api\employee` endpoint, add the following entry in
   the `api.php` in the `\routes` folder:

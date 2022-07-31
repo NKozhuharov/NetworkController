@@ -23,13 +23,6 @@ class ImagesController extends UploadController
     protected string $resizedImagesPath;
 
     /**
-     * Set to false to keep the metadata of the cached images
-     *
-     * @var bool
-     */
-    protected bool $removeMetadata;
-
-    /**
      * ImagesController constructor.
      * Validates and initializes $supportedImageSizes and $resizedImagesPath.
      * Requires IMAGES_SUPPORTED_SIZES and IMAGES_RESIZED_PATH in the Laravel .env file
@@ -40,36 +33,34 @@ class ImagesController extends UploadController
     {
         parent::__construct();
 
-        $supportedImageSizes = env('IMAGES_SUPPORTED_SIZES', '');
+        $supportedImageSizes = config('networkcontroller.images.supported_sizes');
         if (empty($supportedImageSizes)) {
-            throw new Exception("To use the images controller, add IMAGES_SUPPORTED_SIZES configuration variable to the .env file!");
+            throw new Exception('To use the images controller, set IMAGES_SUPPORTED_SIZES configuration variable in the .env file to a non-empty string!');
         }
 
         $supportedImageSizes = explode(',', $supportedImageSizes);
         if (empty($supportedImageSizes)) {
-            throw new Exception("Invalid IMAGES_SUPPORTED_SIZES configuration variable!");
+            throw new Exception('Invalid IMAGES_SUPPORTED_SIZES configuration variable!');
         }
 
         foreach ($supportedImageSizes as $supportedImageSize) {
             $supportedImageSize = (int)$supportedImageSize;
             if (empty($supportedImageSize)) {
-                throw new Exception("Invalid IMAGES_SUPPORTED_SIZES configuration variable!");
+                throw new Exception('Invalid IMAGES_SUPPORTED_SIZES configuration variable!');
             }
             $this->supportedImageSizes[] = $supportedImageSize;
         }
 
         $this->supportedImageSizes[] = $this->imagesOrgPathName;
 
-        $this->resizedImagesPath = env('IMAGES_RESIZED_PATH', '');
+        $this->resizedImagesPath = config('networkcontroller.images.resized_path');
         if (empty($this->resizedImagesPath)) {
-            throw new Exception("To use the images controller, add IMAGES_RESIZED_PATH configuration variable to the .env file!");
+            throw new Exception('To use the images controller, set IMAGES_RESIZED_PATH configuration variable in the .env file to a non-empty string!');
         }
 
         $this->resizedImagesPath = base_path() . '/../' . $this->resizedImagesPath;
 
         $this->ensureDirectoryExists($this->resizedImagesPath);
-
-        $this->removeMetadata = env('IMAGES_REMOVE_METADATA' , TRUE);
     }
 
     /**
@@ -108,7 +99,7 @@ class ImagesController extends UploadController
 
         $imagick->resizeImage($requestedWidth, $imagick->getImageHeight() * $ratio, $imagick::FILTER_LANCZOS, 1);
 
-        if ($this->removeMetadata) {
+        if (config('networkcontroller.images.remove_metadata')) {
             $imagick->stripImage();
         }
 

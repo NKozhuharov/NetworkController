@@ -15,5 +15,8 @@ class NetworkControllerServiceProvider extends ServiceProvider
                 ImagesClearCache::class,
             ]);
         }
+        $this->publishes([
+            __DIR__.'/Config/networkcontroller.php' => config_path('networkcontroller.php'),
+        ]);
     }
 }

@@ -25,9 +25,9 @@ class ImagesClearCache extends Command
      */
     public function handle()
     {
-        $resizedImagesPath = env('IMAGES_RESIZED_PATH', '');
+        $resizedImagesPath = config('networkcontroller.images.resized_path');
         if (empty($resizedImagesPath)) {
-            $this->error("To use the images controller, add IMAGES_RESIZED_PATH configuration variable to the .env file!");
+            $this->error('To use the images controller, set IMAGES_RESIZED_PATH configuration variable in the .env file to a non-empty string!');
             return;
         }
 

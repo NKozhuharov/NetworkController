@@ -170,14 +170,14 @@ class UploadController extends BaseController
      */
     public function __construct()
     {
-        $this->uploadsPath = env('UPLOADS_PATH', '');
+        $this->uploadsPath = config('networkcontroller.uploads.path');
         if (empty($this->uploadsPath)) {
-            throw new Exception("To use the uploads controller, add UPLOADS_PATH configuration variable to the .env file!");
+            throw new Exception('To use the uploads controller, set UPLOADS_PATH configuration variable in the .env file to a non-empty string!');
         }
 
-        $this->imagesPath = env('IMAGES_PATH', '');
+        $this->imagesPath = config('networkcontroller.images.path');
         if (empty($this->imagesPath)) {
-            throw new Exception("To use the uploads controller, add IMAGES_PATH configuration variable to the .env file!");
+            throw new Exception('To use the uploads controller, set IMAGES_PATH configuration variable in the .env file to a non-empty string!');
         }
 
         $this->uploadsPath = base_path() . '/../' . $this->uploadsPath;
@@ -213,9 +213,9 @@ class UploadController extends BaseController
                 $fileInfo = $file->move($basePath, $fileName);
 
                 if (in_array($file->getClientMimeType(), $this->imageMimeTypes)) {
-                    $uploadedFiles[] = env('SITE_URL', url('/')) . $this->imagesUrl . '/' . $this->imagesOrgPathName . '/' . $fileInfo->getFilename();
+                    $uploadedFiles[] = config('app.url', url('/')) . $this->imagesUrl . '/' . $this->imagesOrgPathName . '/' . $fileInfo->getFilename();
                 } else {
-                    $uploadedFiles[] = env('SITE_URL', url('/')) . $this->filesUrl . '/' . $fileInfo->getFilename();
+                    $uploadedFiles[] = config('app.url', url('/')) . $this->filesUrl . '/' . $fileInfo->getFilename();
                 }
             }
         }

@@ -9,10 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
+use Illuminate\Support\Facades\DB;
 use League\Fractal\Pagination\IlluminatePaginatorAdapter;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Resource\Item;
@@ -223,6 +225,7 @@ abstract class NetworkController extends BaseController
      * If the model and the provided attribute are translatable, the `model_translation` table needs to be joined,
      * along with all translatable columns.
      *
+     * @param  BaseModel  $model
      * @param  string  $attributeName
      * @param $builder
      * @return void
@@ -236,28 +239,52 @@ abstract class NetworkController extends BaseController
             return;
         }
 
+        $translationTableName = $model->translations()->getRelated()->getTable();
+
         //check if this table is already joined
-        $joins = $builder->getQuery()->joins;
-        if (!empty($joins)) {
-            foreach ($builder->getQuery()->joins as $join) {
-                if ($join->table === $model->translations()->getRelated()->getTable()) {
-                    return;
+        if (!empty($builder->getQuery()->joins)) {
+            foreach ($builder->getQuery()->joins as $joinKey => $join) {
+                /** @var JoinClause $join */
+                if ($join->table === $translationTableName) {
+                    //if the model is sluggable and the filtering is for slug, all languages must be used
+                    //therefore, if the translations table has already been joined, remove it and join it again
+                    if (
+                        !$model->isSlugAble() ||
+                        $attributeName !== $model->getSlugPropertyName() ||
+                        empty($join->wheres)
+                    ) {
+                        return;
+                    }
+                    unset($builder->getQuery()->joins[$joinKey]);
+                    break;
                 }
             }
         }
 
-        $selectQueryPart = [$model->getTable().'.*'];
+        $selectQueryPart = [$model->getTable() . '.*'];
         foreach ($model->getTranslatedAttributes() as $translatedAttribute) {
-            $selectQueryPart[] = $model->translations()->getRelated()->getTable().'.'.$translatedAttribute;
+            $selectQueryPart[] = $translationTableName . '.' . $translatedAttribute;
         }
 
-        $builder = $builder->leftJoin(
-            $model->translations()->getRelated()->getTable(),
-            $model->translations()->getQualifiedForeignKeyName(),
-            $model->translations()->getQualifiedParentKeyName()
-        )
-            ->where('locale', app('Astrotomic\Translatable\Locales')->current())
-            ->select($selectQueryPart);
+        if ($model->isSlugAble() && $attributeName === $model->getSlugPropertyName()) {
+            $builder = $builder->leftJoin(
+                $translationTableName,
+                $model->translations()->getQualifiedForeignKeyName(),
+                $model->translations()->getQualifiedParentKeyName()
+            )->select($selectQueryPart);
+            return;
+        }
+
+        $builder = $builder->leftJoin($translationTableName, function ($leftJoin) use ($model) {
+            $leftJoin->on(
+                $model->translations()->getQualifiedForeignKeyName(),
+                $model->translations()->getQualifiedParentKeyName()
+            );
+            $leftJoin->on(
+                'locale',
+                DB::raw("'" . app('Astrotomic\Translatable\Locales')->current() . "'")
+            );
+        })->select($selectQueryPart);
     }
 
     /**

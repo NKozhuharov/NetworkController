@@ -75,6 +75,8 @@
 
 - The allowed fields for `orderby`, `sort`,`limit`, `filters`, `query`, `resolve` and `aggregate` optional parameters are provided.
 
+- If the model is slug-able, it will provide the value of the slug column in the `slug` parameter. Otherwise, `slug` will be **FALSE**.
+
 - This parameter is strictly informative and can be used safely with any other optional parameter.
 
 - The `showMeta` should only be used for development  purposes, because it adds a bunch of information to every response,  which increases the server load and the size of the response.

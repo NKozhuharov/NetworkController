@@ -565,7 +565,8 @@ abstract class NetworkController extends BaseController
     {
         if (!$this->model->isSlugAble() || is_numeric($id)) {
             return $this->model->findOrFail($id);
-        } elseif ($this->model->isTranslatable()) {
+        }
+        if ($this->model->isTranslatable()) {
             return $this->model::whereTranslation($this->model->getSlugPropertyName(), $id)->firstOrFail();
         }
         return $this->model::where($this->model->getSlugPropertyName(), $id)->firstOrFail();

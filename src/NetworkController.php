@@ -32,6 +32,7 @@ abstract class NetworkController extends BaseController
     const RESOLVE_PARAM = 'resolve';
     const SHOW_META_PARAM = 'showMeta';
     const AGGREGATE_PARAM = 'aggregate';
+    const SLUG_PARAM = 'slug';
     const META_ROUTE_INFO_PARAM = 'route_info';
 
     const ONLY_DELETED = 'only_deleted';
@@ -408,6 +409,7 @@ abstract class NetworkController extends BaseController
                 self::QUERY_PARAM     => !empty($this->queryAble) ? $this->queryAble : [],
                 self::RESOLVE_PARAM   => !empty($this->resolveAble) ? $this->resolveAble : [],
                 self::AGGREGATE_PARAM => !empty($this->aggregateAble) ? $this->aggregateAble : [],
+                self::SLUG_PARAM      => $this->model->isSlugAble() ? $this->model->getSlugPropertyName() : false
             ]
         );
     }

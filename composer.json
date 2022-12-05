@@ -25,6 +25,9 @@
     "league/fractal": "^0.19.0"
   },
   "autoload": {
+    "files": [
+      "src/helpers.php"
+    ],
     "psr-4": {
       "Nevestul4o\\NetworkController\\": "src/"
     }

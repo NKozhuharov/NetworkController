@@ -42,8 +42,8 @@ Add the following code in the `api.php` in the `\routes` folder:
 Add the following configuration to the `.env` file:
 
 ```
-UPLOADS_PATH=uploads/files
-IMAGES_PATH=uploads/images
+UPLOADS_PATH=../uploads/files
+IMAGES_PATH=../uploads/images
 IMAGES_RESIZED_PATH=cache/images
 IMAGES_SUPPORTED_SIZES=300,600,900
 IMAGES_REMOVE_METADATA=TRUE

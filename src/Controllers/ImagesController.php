@@ -58,7 +58,7 @@ class ImagesController extends UploadController
             throw new Exception('To use the images controller, set IMAGES_RESIZED_PATH configuration variable in the .env file to a non-empty string!');
         }
 
-        $this->resizedImagesPath = base_path() . '/../' . $this->resizedImagesPath;
+        $this->resizedImagesPath = base_path() . '/' . $this->resizedImagesPath;
 
         $this->ensureDirectoryExists($this->resizedImagesPath);
     }

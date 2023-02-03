@@ -53,14 +53,14 @@ class UploadController extends BaseController
      *
      * @var string
      */
-    private string $uploadsPath = '';
+    private string $uploadsPath;
 
     /**
      * Path, where all images are uploaded
      *
      * @var string
      */
-    private string $imagesPath = '';
+    private string $imagesPath;
 
     /**
      * The key in the request, which contains the files
@@ -180,10 +180,10 @@ class UploadController extends BaseController
             throw new Exception('To use the uploads controller, set IMAGES_PATH configuration variable in the .env file to a non-empty string!');
         }
 
-        $this->uploadsPath = base_path() . '/../' . $this->uploadsPath;
+        $this->uploadsPath = base_path() . '/' . $this->uploadsPath;
         $this->ensureDirectoryExists($this->uploadsPath);
 
-        $this->imagesPath = base_path() . '/../' . $this->imagesPath;
+        $this->imagesPath = base_path() . '/' . $this->imagesPath;
         $this->ensureDirectoryExists($this->imagesPath);
     }
 

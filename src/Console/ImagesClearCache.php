@@ -31,7 +31,7 @@ class ImagesClearCache extends Command
             return;
         }
 
-        $resizedImagesPath = base_path().'/../'.$resizedImagesPath;
+        $resizedImagesPath = base_path().'/'.$resizedImagesPath;
         foreach (scandir($resizedImagesPath) as $directory) {
             if ($directory === '.' || $directory === '..') {
                 continue;

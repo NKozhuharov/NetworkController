@@ -1,7 +1,7 @@
 <?php
 return [
     'uploads' => [
-        'path' => env('UPLOADS_PATH', 'uploads/files'),
+        'path' => env('UPLOADS_PATH', '../uploads/files'),
     ],
     'images'  => [
         'path'            => env('IMAGES_PATH', '../uploads/images'),

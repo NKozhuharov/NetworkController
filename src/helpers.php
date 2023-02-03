@@ -8,7 +8,7 @@ if (!function_exists('uploads_path')) {
      */
     function uploads_path(): string
     {
-        return base_path().'/../'.config('networkcontroller.uploads.path');
+        return base_path().'/'.config('networkcontroller.uploads.path');
     }
 }
 
@@ -20,7 +20,7 @@ if (!function_exists('images_path')) {
      */
     function images_path(): string
     {
-        return base_path().'/../'.config('networkcontroller.images.path');
+        return base_path().'/'.config('networkcontroller.images.path');
     }
 }
 

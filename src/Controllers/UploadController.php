@@ -49,6 +49,13 @@ class UploadController extends BaseController
     protected string $filesUrl = 'files';
 
     /**
+     * Override the validation rules here
+     *
+     * @var array
+     */
+    protected array $validationRules = [];
+
+    /**
      * Path, where all files are uploaded
      *
      * @var string
@@ -185,6 +192,13 @@ class UploadController extends BaseController
 
         $this->imagesPath = base_path() . '/' . $this->imagesPath;
         $this->ensureDirectoryExists($this->imagesPath);
+
+        if (empty($this->validationRules)) {
+            $this->validationRules = [
+                $this->filesArrayKey        => 'required|array',
+                $this->filesArrayKey . '.*' => 'required|max:2048',
+            ];
+        }
     }
 
     /**
@@ -197,12 +211,9 @@ class UploadController extends BaseController
      */
     public function uploadSubmit(Request $request): array
     {
-        request()->validate(
-            [
-                $this->filesArrayKey        => 'required|array',
-                $this->filesArrayKey . '.*' => 'required|max:2048',
-            ]
-        );
+        if (!empty($this->validationRules)) {
+            $request->validate($this->validationRules);
+        }
 
         $uploadedFiles = [];
 

@@ -49,7 +49,7 @@ class UploadController extends BaseController
     protected string $filesUrl = 'files';
 
     /**
-     * Override the validation rules here
+     * The rules, which will be used to validate an upload request
      *
      * @var array
      */
@@ -193,12 +193,10 @@ class UploadController extends BaseController
         $this->imagesPath = base_path() . '/' . $this->imagesPath;
         $this->ensureDirectoryExists($this->imagesPath);
 
-        if (empty($this->validationRules)) {
-            $this->validationRules = [
-                $this->filesArrayKey        => 'required|array',
-                $this->filesArrayKey . '.*' => 'required|max:2048',
-            ];
-        }
+        $this->validationRules = [
+            $this->filesArrayKey        => 'required|array',
+            $this->filesArrayKey . '.*' => 'required|file|max:2048',
+        ];
     }
 
     /**

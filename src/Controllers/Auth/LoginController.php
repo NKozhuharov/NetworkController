@@ -15,7 +15,7 @@ class LoginController extends Controller
 {
     use AuthenticatesUsers;
 
-    private JsonResponseHelper $responseHelper;
+    protected JsonResponseHelper $responseHelper;
 
     public function __construct(JsonResponseHelper $responseHelper)
     {

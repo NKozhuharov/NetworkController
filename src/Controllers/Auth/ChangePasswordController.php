@@ -23,7 +23,7 @@ class ChangePasswordController extends Controller
     const F_PASSWORD_CONFIRMATION = 'password_confirmation';
     const F_USER_ID = 'user_id';
 
-    private JsonResponseHelper $responseHelper;
+    protected JsonResponseHelper $responseHelper;
 
     public function __construct(JsonResponseHelper $responseHelper)
     {

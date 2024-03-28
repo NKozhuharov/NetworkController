@@ -506,8 +506,6 @@ abstract class NetworkController extends BaseController
                 });
         }
 
-        dd($builder->toSql());
-
         $this->applySortAndOrder($builder, $request->get(self::SORT_PARAM), $request->get(self::ORDER_BY_PARAM));
 
         $filters = array_merge($this->defaultFilters, $request->input(self::FILTERS_PARAM, []));

@@ -225,8 +225,8 @@ abstract class NetworkController extends BaseController
      * If the model and the provided attribute are translatable, the `model_translation` table needs to be joined,
      * along with all translatable columns.
      *
-     * @param  BaseModel  $model
-     * @param  string  $attributeName
+     * @param BaseModel $model
+     * @param string $attributeName
      * @param $builder
      * @return void
      */
@@ -421,7 +421,7 @@ abstract class NetworkController extends BaseController
     /**
      * Populates the meta property of the fractal resource
      *
-     * @param  ResourceAbstract  $resource
+     * @param ResourceAbstract $resource
      * @return void
      */
     protected function setFractalResourceMetaValue(ResourceAbstract $resource): void
@@ -444,7 +444,7 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a collection of items from the current model after a GET request
      *
-     * @param  Request  $request
+     * @param Request $request
      *
      * @return JsonResponse
      * @throws Exception
@@ -459,7 +459,6 @@ abstract class NetworkController extends BaseController
                 }
                 $this->joinTranslationModelTableIfNecessary($this->model, $column, $builder);
             }
-            //@todo - related models with translations
 
             $builder = $builder->where(
                 function ($query) use ($request) {
@@ -471,17 +470,30 @@ abstract class NetworkController extends BaseController
                             $operators = self::FILTER_FULL_MATCH;
                         }
                         if (method_exists($this->model, $column) && in_array($column, $this->model->getWith())) {
-                            foreach ($this->model->{$column}()->getRelated()->getQueryAble() as $relatedQueryableKey => $relatedQueryableOperators) {
-                                $query->orWhereHas(
-                                    $column,
-                                    function ($q) use ($relatedQueryableKey, $relatedQueryableOperators, $queryWord) {
-                                        $q->where(
-                                            $relatedQueryableKey,
-                                            'LIKE',
-                                            $this->getFilterLikeSearchWordValue($queryWord, $relatedQueryableOperators)
-                                        );
-                                    }
-                                );
+                            $relatedModel = $this->model->{$column}()->getRelated();
+                            foreach ($relatedModel->getQueryAble() as $relatedQueryableKey => $relatedQueryableOperators) {
+                                if ($relatedModel->isTranslatable() && $relatedModel->isTranslationAttribute($relatedQueryableKey)) {
+                                    $query->orWhereHas(
+                                        $column,
+                                        function ($q) use ($relatedQueryableKey, $relatedQueryableOperators, $queryWord) {
+                                            $q->whereTranslationLike(
+                                                $relatedQueryableKey,
+                                                $this->getFilterLikeSearchWordValue($queryWord, $relatedQueryableOperators)
+                                            );
+                                        }
+                                    );
+                                } else {
+                                    $query->orWhereHas(
+                                        $column,
+                                        function ($q) use ($relatedQueryableKey, $relatedQueryableOperators, $queryWord) {
+                                            $q->where(
+                                                $relatedQueryableKey,
+                                                'LIKE',
+                                                $this->getFilterLikeSearchWordValue($queryWord, $relatedQueryableOperators)
+                                            );
+                                        }
+                                    );
+                                }
                             }
                         } elseif (!in_array($column, $this->resolveAble)) {
                             $query->orWhere(
@@ -493,6 +505,8 @@ abstract class NetworkController extends BaseController
                     }
                 });
         }
+
+        dd($builder->toSql());
 
         $this->applySortAndOrder($builder, $request->get(self::SORT_PARAM), $request->get(self::ORDER_BY_PARAM));
 
@@ -587,7 +601,7 @@ abstract class NetworkController extends BaseController
     /**
      * Select an entry from the database, using the provided id or slug (if the model is slug-able)
      *
-     * @param  int|string  $id
+     * @param int|string $id
      * @return Model
      */
     protected function getByIdOrSlug(int|string $id): Model
@@ -604,8 +618,8 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a single item from the current model after a GET request
      *
-     * @param  Request  $request
-     * @param  int|string  $id
+     * @param Request $request
+     * @param int|string $id
      * @return JsonResponse
      */
     public function show(Request $request, int|string $id): JsonResponse

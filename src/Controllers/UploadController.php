@@ -169,6 +169,31 @@ class UploadController extends BaseController
     }
 
     /**
+     * Resizes an image to the specified width
+     *
+     * @param string $originalImgFullPath The full path of the original image
+     * @param string $resizedImageFullPath The full path of the resized image
+     * @param int $requestedWidth The width of the resized image
+     * @param bool $stripImage (optional) Whether to strip the image metadata (default: false)
+     * @return void
+     */
+    protected function resizeImage(string $originalImgFullPath, string $resizedImageFullPath, int $requestedWidth, bool $stripImage = false): void
+    {
+        $imagick = new \Imagick($originalImgFullPath);
+        if ($imagick->getImageWidth() > $requestedWidth) {
+            $ratio = $requestedWidth / $imagick->getImageWidth();
+
+            $imagick->resizeImage($requestedWidth, $imagick->getImageHeight() * $ratio, $imagick::FILTER_LANCZOS, 1);
+
+            if ($stripImage) {
+                $imagick->stripImage();
+            }
+
+            $imagick->writeImage($resizedImageFullPath);
+        }
+    }
+
+    /**
      * UploadController constructor.
      * Validates and initializes $uploadsPath and $imagesPath.
      * Requires UPLOADS_PATH and IMAGES_PATH in the Laravel .env file
@@ -222,6 +247,14 @@ class UploadController extends BaseController
                 $fileInfo = $file->move($basePath, $fileName);
 
                 if (in_array($file->getClientMimeType(), $this->imageMimeTypes)) {
+                    if (config('networkcontroller.images.auto_resize') && config('networkcontroller.images.auto_resize_width') > 0) {
+                        $this->resizeImage(
+                            $this->getImagesPath() . '/' . $fileName,
+                            $this->getImagesPath() . '/' . $fileName,
+                            config('networkcontroller.images.auto_resize_width')
+                        );
+                    }
+
                     $uploadedFiles[] = config('app.url', url('/')) . $this->imagesUrl . '/' . $this->imagesOrgPathName . '/' . $fileInfo->getFilename();
                 } else {
                     $uploadedFiles[] = config('app.url', url('/')) . $this->filesUrl . '/' . $fileInfo->getFilename();

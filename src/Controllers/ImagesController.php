@@ -85,7 +85,6 @@ class ImagesController extends UploadController
         }
 
         $resizedImageDirectory = $this->resizedImagesPath . '/' . $requestedWidth;
-
         $this->ensureDirectoryExists($resizedImageDirectory);
 
         $resizedImageFullPath = $resizedImageDirectory . '/' . $imgName;
@@ -94,16 +93,7 @@ class ImagesController extends UploadController
             return response()->file($resizedImageFullPath);
         }
 
-        $imagick = new \Imagick($originalImgFullPath);
-        $ratio = $requestedWidth / $imagick->getImageWidth();
-
-        $imagick->resizeImage($requestedWidth, $imagick->getImageHeight() * $ratio, $imagick::FILTER_LANCZOS, 1);
-
-        if (config('networkcontroller.images.remove_metadata')) {
-            $imagick->stripImage();
-        }
-
-        $imagick->writeImage($resizedImageFullPath);
+        $this->resizeImage($originalImgFullPath, $resizedImageFullPath, $requestedWidth, config('networkcontroller.images.remove_metadata'));
 
         return response()->file($resizedImageFullPath);
     }

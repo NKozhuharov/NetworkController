@@ -442,6 +442,17 @@ abstract class NetworkController extends BaseController
     }
 
     /**
+     * Initialize the builder for the 'index' function. Allows custom logic.
+     *
+     * @param Request $request
+     * @return Builder|BaseModel
+     */
+    protected function getIndexQueryBuilder(Request $request): Builder|BaseModel
+    {
+        return $this->model;
+    }
+
+    /**
      * Returns a collection of items from the current model after a GET request
      *
      * @param Request $request
@@ -451,7 +462,7 @@ abstract class NetworkController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $builder = $this->model;
+        $builder = $this->getIndexQueryBuilder($request);
         if ($request->filled(self::QUERY_PARAM) && !empty($this->queryAble)) {
             foreach ($this->queryAble as $column => $operators) {
                 if (is_numeric($column)) {

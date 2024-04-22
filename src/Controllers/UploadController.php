@@ -8,6 +8,7 @@ use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
+use ImagickException;
 
 class UploadController extends BaseController
 {
@@ -176,6 +177,7 @@ class UploadController extends BaseController
      * @param int $requestedWidth The width of the resized image
      * @param bool $stripImage (optional) Whether to strip the image metadata (default: false)
      * @return void
+     * @throws ImagickException
      */
     protected function resizeImage(string $originalImgFullPath, string $resizedImageFullPath, int $requestedWidth, bool $stripImage = false): void
     {
@@ -184,13 +186,13 @@ class UploadController extends BaseController
             $ratio = $requestedWidth / $imagick->getImageWidth();
 
             $imagick->resizeImage($requestedWidth, $imagick->getImageHeight() * $ratio, $imagick::FILTER_LANCZOS, 1);
-
-            if ($stripImage) {
-                $imagick->stripImage();
-            }
-
-            $imagick->writeImage($resizedImageFullPath);
         }
+
+        if ($stripImage) {
+            $imagick->stripImage();
+        }
+
+        $imagick->writeImage($resizedImageFullPath);
     }
 
     /**

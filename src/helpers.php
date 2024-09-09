@@ -8,7 +8,7 @@ if (!function_exists('uploads_path')) {
      */
     function uploads_path(): string
     {
-        return base_path().'/'.config('networkcontroller.uploads.path');
+        return base_path() . '/' . config('networkcontroller.uploads.path');
     }
 }
 
@@ -20,7 +20,7 @@ if (!function_exists('images_path')) {
      */
     function images_path(): string
     {
-        return base_path().'/'.config('networkcontroller.images.path');
+        return base_path() . '/' . config('networkcontroller.images.path');
     }
 }
 
@@ -28,12 +28,12 @@ if (!function_exists('uploaded_file_path')) {
     /**
      * Get the path, where a specific uploaded file is stored
      *
-     * @param  string  $fileName
+     * @param string $fileName
      * @return string
      */
     function uploaded_file_path(string $fileName): string
     {
-        return uploads_path().'/'.$fileName;
+        return uploads_path() . '/' . $fileName;
     }
 }
 
@@ -41,11 +41,29 @@ if (!function_exists('uploaded_image_path')) {
     /**
      * Get the path, where a specific uploaded image is stored
      *
-     * @param  string  $fileName
+     * @param string $fileName
      * @return string
      */
     function uploaded_image_path(string $fileName): string
     {
-        return images_path().'/'.$fileName;
+        return images_path() . '/' . $fileName;
+    }
+}
+
+if (!function_exists('resized_image_url')) {
+    /**
+     * Get the url, which will resize the image using the specified width
+     *
+     * @param string $url
+     * @param int $width
+     * @return string
+     */
+    function resized_image_url(string $url, int $width): string
+    {
+        if (!in_array($width, explode(',', config('networkcontroller.images.resized_path')))) {
+            throw new \InvalidArgumentException('Invalid image width');
+        }
+
+        return str_replace('/org/', '/' . $width . '/', $url);
     }
 }

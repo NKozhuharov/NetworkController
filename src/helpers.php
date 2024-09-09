@@ -60,7 +60,7 @@ if (!function_exists('resized_image_url')) {
      */
     function resized_image_url(string $url, int $width): string
     {
-        if (!in_array($width, explode(',', config('networkcontroller.images.resized_path')))) {
+        if (!in_array($width, explode(',', config('networkcontroller.images.supported_sizes')))) {
             throw new \InvalidArgumentException('Invalid image width');
         }
 

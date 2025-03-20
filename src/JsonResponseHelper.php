@@ -17,6 +17,12 @@ class JsonResponseHelper
     const STATUS_WARNING = 'warning';
     const STATUS_INFO = 'info';
 
+    public function fractalResourceToArray(ResourceAbstract $collection): array
+    {
+        $fractalManager = new Manager();
+        return $fractalManager->createData($collection)->toArray();
+    }
+
     /**
      * Transforms a Fractal Resource (Item/Collection) to a Laravel JsonResponse
      *
@@ -25,8 +31,7 @@ class JsonResponseHelper
      */
     public function fractalResourceToJsonResponse(ResourceAbstract $collection): JsonResponse
     {
-        $fractalManager = new Manager();
-        return new JsonResponse($fractalManager->createData($collection)->toArray());
+        return new JsonResponse($this->fractalResourceToArray($collection));
     }
 
     /**

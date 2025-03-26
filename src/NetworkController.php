@@ -330,10 +330,10 @@ abstract class NetworkController extends BaseController
      *
      * @param $builder
      * @param string $filterKey
-     * @param string $filterValue
+     * @param string|null $filterValue
      * @param string $filterOperator
      */
-    protected function applyFilter(&$builder, string $filterKey, string $filterValue, string $filterOperator = '='): void
+    protected function applyFilter(&$builder, string $filterKey, string|null $filterValue, string $filterOperator = '='): void
     {
         if (str_contains($filterKey, '.')) {
             $filterKey = explode('.', $filterKey);
@@ -345,14 +345,39 @@ abstract class NetworkController extends BaseController
             }
             $builder->whereHas($filterKey[0], function ($innerBuilder) use ($filterKey, $filterValue, $filterOperator) {
                 $this->joinTranslationModelTableIfNecessary($this->model->{$filterKey[0]}()->getModel(), $filterKey[1], $innerBuilder);
-                $innerBuilder->where($filterKey[1], $filterOperator, $filterValue);
+                $this->applyFilterToBuilder($innerBuilder, $filterKey[1], $filterValue, $filterOperator);
             });
             return;
         }
 
         if (in_array($filterKey, $this->filterAble, TRUE)) {
             $this->joinTranslationModelTableIfNecessary($this->model, $filterKey, $builder);
+            $this->applyFilterToBuilder($builder, $filterKey, $filterValue, $filterOperator);
+        }
+    }
+
+    /**
+     * Applies a filter to the query builder based on the provided key, value, and operator.
+     *
+     * @param $builder
+     * @param string $filterKey
+     * @param string|null $filterValue
+     * @param string $filterOperator
+     *
+     * @return void
+     */
+    protected function applyFilterToBuilder(&$builder, string $filterKey, string|null $filterValue, string $filterOperator = '='): void
+    {
+        if (!is_null($filterValue) && strtolower($filterValue) !== 'null') {
             $builder->where($filterKey, $filterOperator, $filterValue);
+            return;
+        }
+        if ($filterOperator === '=') {
+            $builder->whereNull($filterKey);
+            return;
+        }
+        if ($filterOperator === '!=') {
+            $builder->whereNotNull($filterKey);
         }
     }
 

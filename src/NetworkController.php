@@ -191,7 +191,7 @@ abstract class NetworkController extends BaseController
         $this->filterAble = $this->model->getFilterAble();
         $this->resolveAble = $this->model->getResolveAble();
         foreach ($this->resolveAble as $relation) {
-            if (!method_exists($this->model, $relation)) {
+            if (!str_contains($relation, '-') && !method_exists($this->model, $relation)) {
                 throw new Exception("Create a `$relation()` method to define relation in {$this->modelClass}");
             }
         }
@@ -206,7 +206,6 @@ abstract class NetworkController extends BaseController
             foreach ($resolve as $resolveValue) {
                 if (in_array($resolveValue, $this->resolveAble, TRUE)) {
                     try {
-                        $this->model::has($resolveValue);
                         $approvedResolve[] = $resolveValue;
                         if (!in_array($resolveValue, $this->model->getWith())) {
                             $this->model->addToWith(str_replace('-', '.', $resolveValue));

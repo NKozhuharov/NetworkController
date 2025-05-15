@@ -191,7 +191,7 @@ abstract class BaseModel extends Model
      */
     public function isTranslatable(): bool
     {
-        return trait_exists('\Astrotomic\Translatable\Translatable') && in_array('Astrotomic\Translatable\Translatable', class_uses($this));
+        return in_array('Astrotomic\Translatable\Contracts\Translatable', class_implements($this) ?: []);
     }
 
     /**

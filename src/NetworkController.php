@@ -768,6 +768,14 @@ abstract class NetworkController extends BaseController
             }
         }
 
+        foreach ($this->model->getTranslatedAttributes() as $translatedAttribute) {
+            if ($request->has($translatedAttribute)) {
+                foreach ($request->input($translatedAttribute) as $locale => $value) {
+                    $this->model->{$translatedAttribute.':'.$locale} = $value;
+                }
+            }
+        }
+
         $this->handleStoreUpdateResolvedRelations($request);
 
         $this->model->save();
@@ -798,6 +806,14 @@ abstract class NetworkController extends BaseController
         foreach ($this->model->getFillable() as $fillAble) {
             if ($request->has($fillAble)) {
                 $this->model->$fillAble = $request->input($fillAble);
+            }
+        }
+
+        foreach ($this->model->getTranslatedAttributes() as $translatedAttribute) {
+            if ($request->has($translatedAttribute)) {
+                foreach ($request->input($translatedAttribute) as $locale => $value) {
+                    $this->model->{$translatedAttribute.':'.$locale} = $value;
+                }
             }
         }
 

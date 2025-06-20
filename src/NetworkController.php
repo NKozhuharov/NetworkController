@@ -2,7 +2,6 @@
 
 namespace Nevestul4o\NetworkController;
 
-use BadMethodCallException;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +20,7 @@ use League\Fractal\Resource\Item;
 use League\Fractal\Resource\ResourceAbstract;
 use League\Fractal\TransformerAbstract;
 use Nevestul4o\NetworkController\Models\BaseModel;
+use Nevestul4o\NetworkController\Transformers\Interface\NestedIncludesTransformer as NestedIncludesInterface;
 
 abstract class NetworkController extends BaseController
 {
@@ -191,7 +191,7 @@ abstract class NetworkController extends BaseController
         $this->filterAble = $this->model->getFilterAble();
         $this->resolveAble = $this->model->getResolveAble();
         foreach ($this->resolveAble as $relation) {
-            if (!str_contains($relation, '-') && !method_exists($this->model, $relation)) {
+            if (!str_contains($relation, '.') && !method_exists($this->model, $relation)) {
                 throw new Exception("Create a `$relation()` method to define relation in {$this->modelClass}");
             }
         }
@@ -201,23 +201,44 @@ abstract class NetworkController extends BaseController
         $this->getItemsPerPageFromGet();
 
         $approvedResolve = [];
+        $nestedResolve = [];
         $resolve = array_merge($this->defaultResolve, request()->input(self::RESOLVE_PARAM, []));
         if (!empty($resolve)) {
             foreach ($resolve as $resolveValue) {
-                if (in_array($resolveValue, $this->resolveAble, TRUE)) {
-                    try {
-                        $approvedResolve[] = $resolveValue;
-                        if (!in_array($resolveValue, $this->model->getWith())) {
-                            $this->model->addToWith(str_replace('-', '.', $resolveValue));
-                        }
-                    } catch (BadMethodCallException $exception) {
+                if (str_contains($resolveValue, '.')) {
+                    if (!in_array(NestedIncludesInterface::class, class_implements($this->transformerInstance) ?: [])) {
+                        continue;
                     }
+                    $resolveArray = explode('.', $resolveValue);
+                    if (!in_array($resolveArray[0], $this->resolveAble, TRUE)) {
+                        continue;
+                    }
+
+                    $this->model->addToWith($resolveValue);
+                    $approvedResolve[] = $resolveArray[0];
+
+                    $nested = [];
+                    for ($i = count($resolveArray) - 1; $i >= 0; $i--) {
+                        $nested = [$resolveArray[$i] => $nested];
+                    }
+
+                    $nestedResolve = array_merge($nestedResolve, $nested);
+
+                    continue;
+                }
+
+                if (in_array($resolveValue, $this->resolveAble, TRUE)) {
+                    $approvedResolve[] = $resolveValue;
+                    $this->model->addToWith($resolveValue);
                 }
             }
         }
 
         $this->transformerInstance->setDefaultIncludes($approvedResolve);
         $this->transformerInstance->setAvailableIncludes($this->model->getWith());
+        if (in_array(NestedIncludesInterface::class, class_implements($this->transformerInstance) ?: [])) {
+            $this->transformerInstance->setNestedIncludes($nestedResolve);
+        }
     }
 
     /**
@@ -771,7 +792,7 @@ abstract class NetworkController extends BaseController
         foreach ($this->model->getTranslatedAttributes() as $translatedAttribute) {
             if ($request->has($translatedAttribute)) {
                 foreach ($request->input($translatedAttribute) as $locale => $value) {
-                    $this->model->{$translatedAttribute.':'.$locale} = $value;
+                    $this->model->{$translatedAttribute . ':' . $locale} = $value;
                 }
             }
         }
@@ -812,7 +833,7 @@ abstract class NetworkController extends BaseController
         foreach ($this->model->getTranslatedAttributes() as $translatedAttribute) {
             if ($request->has($translatedAttribute)) {
                 foreach ($request->input($translatedAttribute) as $locale => $value) {
-                    $this->model->{$translatedAttribute.':'.$locale} = $value;
+                    $this->model->{$translatedAttribute . ':' . $locale} = $value;
                 }
             }
         }

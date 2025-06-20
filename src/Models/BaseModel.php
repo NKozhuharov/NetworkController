@@ -199,7 +199,7 @@ abstract class BaseModel extends Model
      *
      * @return bool
      */
-    public function isSoftDeletable(): bool
+    public function hasSoftDeletes(): bool
     {
         return in_array('Illuminate\Database\Eloquent\SoftDeletes', class_uses($this));
     }

@@ -609,9 +609,9 @@ abstract class NetworkController extends BaseController
         }
         unset($filters);
 
-        if ($request->get(self::WITH_DELETED) && $this->model->isSoftDeletable()) {
+        if ($request->get(self::WITH_DELETED) && $this->model->hasSoftDeletes()) {
             $builder = $builder->withTrashed();
-        } elseif ($request->get(self::ONLY_DELETED) && $this->model->isSoftDeletable()) {
+        } elseif ($request->get(self::ONLY_DELETED) && $this->model->hasSoftDeletes()) {
             $builder = $builder->onlyTrashed();
         }
 
@@ -773,7 +773,7 @@ abstract class NetworkController extends BaseController
             $this->validateInput($request);
         }
 
-        if ($this->model->isSoftDeletable()) {
+        if ($this->model->hasSoftDeletes()) {
             $recoveredObject = $this->recoverDeletedObject($request);
             if (!empty($recoveredObject)) {
                 $recoveredObject->loadMissing($this->model->getWith());

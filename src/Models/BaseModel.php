@@ -226,7 +226,7 @@ abstract class BaseModel extends Model
             return [];
         }
 
-        return $this->translatedAttributes;
+        return $this->translatedAttributes ?? [];
     }
 
     /**
@@ -237,5 +237,15 @@ abstract class BaseModel extends Model
     public function getSlugPropertyName(): string
     {
         return $this->slugPropertyName;
+    }
+
+    /**
+     * Determine if the model should display translated attributes in the API response
+     *
+     * @return bool
+     */
+    public function displayTranslatedAttributes(): bool
+    {
+        return $this->isTranslatable() && in_array('translations', $this->getWith());
     }
 }

@@ -36,6 +36,7 @@ abstract class NetworkController extends BaseController
     const AGGREGATE_PARAM = 'aggregate';
     const SLUG_PARAM = 'slug';
     const META_ROUTE_INFO_PARAM = 'route_info';
+    const META_WITH_TRANSLATIONS_PARAM = 'withTranslations';
 
     const ONLY_DELETED = 'only_deleted';
     const WITH_DELETED = 'with_deleted';
@@ -812,7 +813,13 @@ abstract class NetworkController extends BaseController
     public function show(Request $request, int|string $id): JsonResponse
     {
         try {
-            $fractalItem = new Item($this->getByIdOrSlug($id), $this->transformerInstance);
+            $item = $this->getByIdOrSlug($id);
+
+            if ($request->filled(self::META_WITH_TRANSLATIONS_PARAM)) {
+                $item->addToWith('translations');
+            }
+
+            $fractalItem = new Item($item, $this->transformerInstance);
 
             if ($request->filled(self::SHOW_META_PARAM)) {
                 $this->setFractalResourceMetaValue($fractalItem);

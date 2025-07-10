@@ -692,6 +692,30 @@ abstract class NetworkController extends BaseController
     }
 
     /**
+     * Retrieves the translations for the given model by ID or slug.
+     *
+     * @param int|string $id
+     *
+     * @return JsonResponse
+     */
+    public function translations(int|string $id): JsonResponse
+    {
+        $response = [];
+        if (!$this->model->isTranslatable() || empty($this->model->getTranslatedAttributes())) {
+            return $this->responseHelper->standardDataResponse($response);
+        }
+
+        $object = $this->getByIdOrSlug($id);
+        foreach ($this->model->getTranslatedAttributes() as $translatedAttribute) {
+            foreach (config('translatable.locales') as $locale) {
+                $response[$translatedAttribute][$locale] = $object->getTranslation($locale)->{$translatedAttribute} ?? null;
+            }
+        }
+
+        return $this->responseHelper->standardDataResponse($response);
+    }
+
+    /**
      * Attempt to recover a deleted object, based on the current request
      *
      * @param Request $request

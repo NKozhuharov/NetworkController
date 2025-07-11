@@ -409,7 +409,7 @@ abstract class NetworkController extends BaseController
      * @param string|null $sort
      * @param string|null $orderBy
      */
-    protected function applySortAndOrder(&$builder, ?string $sort, ?string $orderBy)
+    protected function applySortAndOrder(&$builder, ?string $sort, ?string $orderBy): void
     {
         $sort = $sort ? trim(strtolower($sort)) : $this->defaultSort;
         if ($sort !== self::SORT_ASC && $sort !== self::SORT_DESC) {
@@ -427,7 +427,6 @@ abstract class NetworkController extends BaseController
             return;
         }
 
-        //@todo - related models with translations
         if (str_contains($orderBy, '.')) {
             $orderBy = explode('.', $orderBy);
             if (
@@ -435,26 +434,31 @@ abstract class NetworkController extends BaseController
                 && in_array($orderBy[0], $this->resolveAble)
                 && in_array($orderBy[1], $this->model->{$orderBy[0]}()->getRelated()->getOrderAble())
             ) {
-                switch (get_class($this->model->{$orderBy[0]}())) {
+                $relation = $this->model->{$orderBy[0]}();
+
+                switch (get_class($relation)) {
                     case HasOne::class:
-                        $builder = $builder->orderBy(
-                            $this->model->{$orderBy[0]}()->getRelated()::select($orderBy[1])
-                                ->whereColumn(
-                                    $this->model->{$orderBy[0]}()->getQualifiedParentKeyName(),
-                                    $this->model->{$orderBy[0]}()->getQualifiedForeignKeyName()
-                                ),
-                            $sort
-                        );
+                        $orderByInnerQuery = $relation->getRelated();
+                        $this->joinTranslationModelTableIfNecessary($relation->getRelated(), $orderBy[1], $orderByInnerQuery);
+                        $orderByInnerQuery->select($orderBy[1])->select($orderBy[1])
+                            ->whereColumn(
+                                $relation->getQualifiedForeignKeyName(),
+                                $relation->getQualifiedOwnerKeyName()
+                            );
+
+                        $builder = $builder->orderBy($orderByInnerQuery, $sort);
                         return;
                     case BelongsTo::class:
-                        $builder = $builder->orderBy(
-                            $this->model->{$orderBy[0]}()->getRelated()::select($orderBy[1])
-                                ->whereColumn(
-                                    $this->model->{$orderBy[0]}()->getQualifiedForeignKeyName(),
-                                    $this->model->{$orderBy[0]}()->getQualifiedOwnerKeyName()
-                                ),
-                            $sort
-                        );
+                        $orderByInnerQuery = $relation->getRelated();
+                        $this->joinTranslationModelTableIfNecessary($relation->getRelated(), $orderBy[1], $orderByInnerQuery);
+
+                        $orderByInnerQuery->select($orderBy[1])
+                            ->whereColumn(
+                                $relation->getQualifiedForeignKeyName(),
+                                $relation->getQualifiedOwnerKeyName()
+                            );
+
+                        $builder = $builder->orderBy($orderByInnerQuery, $sort);
                         return;
                 }
             }

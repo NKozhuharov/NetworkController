@@ -436,31 +436,33 @@ abstract class NetworkController extends BaseController
             ) {
                 $relation = $this->model->{$orderBy[0]}();
 
+                if (!in_array(get_class($relation), [HasOne::class, BelongsTo::class])) {
+                    return;
+                }
+
+                $orderByInnerQuery = $relation->getRelated();
+                $this->joinTranslationModelTableIfNecessary($relation->getRelated(), $orderBy[1], $orderByInnerQuery);
+
+                $tableName = $orderByInnerQuery->getModel()->getTable();
+                $ownerKeyName = $relation->getQualifiedOwnerKeyName();
+                $foreignKeyName = $relation->getQualifiedForeignKeyName();
+
+                if ($tableName === $this->model->getTable()) {
+                    $tableName  .= ' as inner_table';
+                    $ownerKeyName = 'inner_table.' . $relation->getOwnerKeyName();
+                }
+
+                $orderByInnerQuery->select($orderBy[1])->from($tableName);
+
                 switch (get_class($relation)) {
                     case HasOne::class:
-                        $orderByInnerQuery = $relation->getRelated();
-                        $this->joinTranslationModelTableIfNecessary($relation->getRelated(), $orderBy[1], $orderByInnerQuery);
-                        $orderByInnerQuery->select($orderBy[1])->select($orderBy[1])
-                            ->whereColumn(
-                                $relation->getQualifiedForeignKeyName(),
-                                $relation->getQualifiedOwnerKeyName()
-                            );
-
-                        $builder = $builder->orderBy($orderByInnerQuery, $sort);
-                        return;
+                        $orderByInnerQuery->select($orderBy[1])->whereColumn($foreignKeyName, $ownerKeyName);
                     case BelongsTo::class:
-                        $orderByInnerQuery = $relation->getRelated();
-                        $this->joinTranslationModelTableIfNecessary($relation->getRelated(), $orderBy[1], $orderByInnerQuery);
-
-                        $orderByInnerQuery->select($orderBy[1])
-                            ->whereColumn(
-                                $relation->getQualifiedForeignKeyName(),
-                                $relation->getQualifiedOwnerKeyName()
-                            );
-
-                        $builder = $builder->orderBy($orderByInnerQuery, $sort);
-                        return;
+                        $orderByInnerQuery->select($orderBy[1])->whereColumn($ownerKeyName, $foreignKeyName);
                 }
+
+                $builder = $builder->orderBy($orderByInnerQuery, $sort);
+                return;
             }
         }
 

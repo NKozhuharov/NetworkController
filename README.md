@@ -2,28 +2,32 @@
 
 Use the
 ```shell
-php artisan vendor:publish
+  php artisan vendor:publish
 ```
 command to publish the `NetworkController` configuration.
 
-* All controllers should extend it.
-* For example, if we need to link the `EmployeeController`, with the `\api\employee` endpoint, add the following entry in
+* All API controllers should extend it.
+* For example, if we need to link the `APIEmployeeController`, with the `\api\employee` endpoint, add the following entry in
   the `api.php` in the `\routes` folder:
 
 ```php
-    Route::resource('employee', EmployeeController::class);
+    Route::resource('employee', APIEmployeeController::class);
 ````
 
 ## BaseModel
 
-* Abstract class, cannot be used standalone
+* Abstract class, which cannot be used standalone
 * All models should extend it
 * All models need to be placed in the `\App\Http\Models\` folder
 * Ideally, one model should have one controller, which extends **NetworkController**
 
+## Special Features
+
+Special features usage examples: [BaseModel — Examples](./BaseModelSpecialFeaturesExamples.md)
+
 ## BaseUser
 
-* Abstract class, cannot be used standalone
+* Abstract class, which cannot be used standalone
 * Provides basic user account functionality
 * It **MUST** be extended by a model called **User**, placed in the `\App\Http\Models\` folder
 
@@ -49,7 +53,7 @@ IMAGES_SUPPORTED_SIZES=300,600,900
 IMAGES_REMOVE_METADATA=TRUE
 ```
 
-There is a command that allows to remove all resized images:
+There is a command that allows removing all resized images:
 ```shell
 php artisan network-controller:images-clear-cache
 ```
@@ -77,4 +81,4 @@ php artisan network-controller:images-clear-cache
 
 * *WARNING* - the function `changePasswordForced` in **ChangePasswordController** is **NOT** secured!
   It can change the password of the user, without his current password.
-  Take care te secure it manually, when defining the API route, or override it!
+  Take care to secure it manually when defining the API route or overriding it!

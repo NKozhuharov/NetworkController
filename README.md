@@ -1,49 +1,103 @@
-## NetworkController
+# NetworkController
 
-Use the
-```shell
-  php artisan vendor:publish
-```
-command to publish the `NetworkController` configuration.
+A Laravel package that provides a powerful, convention-driven base API controller and model foundation for building RESTful endpoints quickly. 
+It includes rich GET query capabilities (pagination, filtering, sorting, search, includes, aggregations), 
+transformers via Fractal, file and image upload helpers, ready-made auth controllers, and more.
 
-* All API controllers should extend it.
-* For example, if we need to link the `APIEmployeeController`, with the `\api\employee` endpoint, add the following entry in
-  the `api.php` in the `\routes` folder:
+## Table of Contents
+- Requirements
+- Installation
+- Publish Configuration
+- Quick Start
+- Models (BaseModel)
+- Special Features and Aggregations
+- File and Image Uploads
+- Auth Controllers (Login and Change Password)
+- GET Requests Reference
+- Contributing
+- License
 
-```php
-    Route::resource('employee', APIEmployeeController::class);
-````
+## Requirements
+- PHP: ^8.0.2
+- Laravel: ^9.0 | ^10.0 | ^11.0 | ^12.0
+- Extensions: ext-imagick (required for image features)
 
-## BaseModel
+## Installation
+Install via Composer:
 
-* Abstract class, which cannot be used standalone
-* All models should extend it
-* All models need to be placed in the `\App\Http\Models\` folder
-* Ideally, one model should have one controller, which extends **NetworkController**
-
-## Special Features
-
-Special features usage examples: [BaseModel — Examples](./BaseModelSpecialFeaturesExamples.md)
-
-## BaseUser
-
-* Abstract class, which cannot be used standalone
-* Provides basic user account functionality
-* It **MUST** be extended by a model called **User**, placed in the `\App\Http\Models\` folder
-
-## FileUploadController and ImageUploadController
-
-Add the following code in the `api.php` in the `\routes` folder:
-
-```php
-    use Nevestul4o\NetworkController\Controllers\ImagesController;
-    use Nevestul4o\NetworkController\Controllers\UploadController;
-
-    Route::get('images/{width}/{name}', [ImagesController::class, 'getImage'])->name('get-image');
-    Route::post('upload', [UploadController::class, 'uploadSubmit']);
+```bash
+  composer require nevestul4o/network-controller
 ```
 
-Add the following configuration to the `.env` file:
+## Publish Configuration
+The package ships with a publishable configuration file. Use:
+
+```bash
+  php artisan vendor:publish --provider="Nevestul4o\NetworkController\NetworkControllerServiceProvider"
+```
+
+This will publish:
+- config/networkcontroller.php
+
+## Quick Start
+1) Create a controller that extends NetworkController and register a resource route:
+
+```php
+use App\Http\Controllers\Controller;
+use Nevestul4o\NetworkController\NetworkController;
+
+class APIEmployeeController extends NetworkController {}
+```
+
+In routes/api.php:
+
+```php
+use App\Http\Controllers\APIEmployeeController;
+use Illuminate\Support\Facades\Route;
+
+Route::resource('employee', APIEmployeeController::class);
+```
+
+2) Create a model that extends BaseModel and place it under `App\Http\Models` (as expected by this package):
+
+```php
+namespace App\Http\Models;
+
+use Nevestul4o\NetworkController\Models\BaseModel;
+
+class Employee extends BaseModel
+{
+    protected $fillable = ['first_name', 'last_name'];
+}
+```
+
+3) Optional: Add a Fractal transformer for your model and configure includes as needed.
+
+Now you can call endpoints like GET /api/employee with rich query parameters (see reference below).
+
+## Models (BaseModel)
+- Abstract class; your application models should extend it.
+- Expected location: `App\Http\Models`.
+- Ideally, one model maps to one controller that extends NetworkController.
+
+## Special Features and Aggregations
+- Advanced ordering (including virtual keys via scopes)
+- Safe, predefined aggregations returned under meta.aggregate
+
+Read more and see examples: [BaseModel — Examples](./BaseModelSpecialFeaturesExamples.md).
+
+## File and Image Uploads
+Add these routes to routes/api.php:
+
+```php
+use Nevestul4o\NetworkController\Controllers\ImagesController;
+use Nevestul4o\NetworkController\Controllers\UploadController;
+
+Route::get('images/{width}/{name}', [ImagesController::class, 'getImage'])->name('get-image');
+Route::post('upload', [UploadController::class, 'uploadSubmit']);
+```
+
+Configure your .env:
 
 ```
 UPLOADS_PATH=../uploads/files
@@ -53,32 +107,44 @@ IMAGES_SUPPORTED_SIZES=300,600,900
 IMAGES_REMOVE_METADATA=TRUE
 ```
 
-There is a command that allows removing all resized images:
-```shell
-php artisan network-controller:images-clear-cache
+Maintenance command to clear the resized image cache:
+
+```bash
+  php artisan network-controller:images-clear-cache
 ```
 
-## LoginController and ChangePasswordController
+## Auth Controllers (Login and Change Password)
+- Pre-made controllers offering login/logout and password change flows.
+- Requires a `User` model under `App\Http\Models` extending `BaseUser`.
+- Update the user provider namespace in config/auth.php to `App\Http\Models\User`.
+- Requires a `UserTransformer` under `App\Http\Models\Transformers`.
+- You can override methods as needed.
 
-* Pre-made controller classes, providing basic functionality for login/logout and password changes
-* They require a Model, called **User**, placed in the `\App\Http\Models\` folder, extending **BaseUser**
-* Change the namespace of the user provider in `auth.php` to `\App\Http\Models\User`
-* They require a Transformer, called **UserTransformer**, placed in the `App\Http\Models\Transformers\` folder
-* Functions can be freely overridden
-* Can be used by defining these routes in the `api.php`:
+Routes (add to routes/api.php):
 
 ```php
-    use Nevestul4o\NetworkController\Controllers\Auth\LoginController;
-    use Nevestul4o\NetworkController\Controllers\Auth\ChangePasswordController;
-    
-    Route::post('login', [LoginController::class, 'login'])->name('login');
-    Route::get('login', [LoginController::class, 'login'])->name('getCurrentUser');
-    Route::post('logout', [LoginController::class, 'logout'])->name('logout');
-    
-    Route::post('change-password', [ChangePasswordController::class, 'changePassword'])->name('changePassword');
-    Route::post('change-password-forced', [ChangePasswordController::class, 'changePasswordForced'])->name('changePasswordForced');
+use Nevestul4o\NetworkController\Controllers\Auth\LoginController;
+use Nevestul4o\NetworkController\Controllers\Auth\ChangePasswordController;
+
+Route::post('login', [LoginController::class, 'login'])->name('login');
+Route::get('login', [LoginController::class, 'login'])->name('getCurrentUser');
+Route::post('logout', [LoginController::class, 'logout'])->name('logout');
+
+Route::post('change-password', [ChangePasswordController::class, 'changePassword'])->name('changePassword');
+Route::post('change-password-forced', [ChangePasswordController::class, 'changePasswordForced'])->name('changePasswordForced');
 ```
 
-* *WARNING* - the function `changePasswordForced` in **ChangePasswordController** is **NOT** secured!
-  It can change the password of the user, without his current password.
-  Take care to secure it manually when defining the API route or overriding it!
+Warning: changePasswordForced in ChangePasswordController is NOT secured. It can change a user's password without the current password. Protect the route appropriately or override the method.
+
+## GET Requests Reference
+For detailed documentation of the supported GET parameters (pagination, showMeta, sorting, filtering, search, resolve/includes, slugs, aggregations, and more), see:
+
+- [NetworkController GET Requests](./NetworkControllerGETRequests.md)
+
+These docs explain how to use parameters like page, limit, orderby, sort, filters, query, resolve, aggregate and how meta.route_info helps discover allowed values.
+
+## Contributing
+Issues and pull requests are welcome. Please follow the conventional code style and include tests where possible.
+
+## License
+MIT

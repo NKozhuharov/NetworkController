@@ -406,8 +406,9 @@ abstract class NetworkController extends BaseController
      * Supports related models, one level deep.
      *
      * @param $builder
-     * @param string|null $sort
-     * @param string|null $orderBy
+     * @param  string|null  $sort
+     * @param  string|null  $orderBy
+     * @throws Exception
      */
     protected function applySortAndOrder(&$builder, ?string $sort, ?string $orderBy): void
     {
@@ -423,8 +424,19 @@ abstract class NetworkController extends BaseController
                 $this->joinTranslationModelTableIfNecessary($this->model, $orderBy, $builder);
             }
 
-            $builder = $builder->orderBy($orderBy, $sort);
-            return;
+            if ($this->model->isFillable($orderBy)) {
+                $builder = $builder->orderBy($orderBy, $sort);
+                return;
+            }
+
+            $scopeMethodName = 'orderBy' . str_replace('_', '', ucwords($orderBy, '_'));
+            if (method_exists($this->model, 'scope'.ucfirst($scopeMethodName))) {
+                $builder = $builder->{$scopeMethodName}($sort);
+
+                return;
+            }
+
+            throw new Exception('The provided order by column is not a valid column for the model - ' . $orderBy);
         }
 
         if (str_contains($orderBy, '.')) {

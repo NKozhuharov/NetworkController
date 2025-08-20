@@ -222,7 +222,7 @@ abstract class NetworkController extends BaseController
                         $nested = [$resolveArray[$i] => $nested];
                     }
 
-                    $nestedResolve = array_merge($nestedResolve, $nested);
+                    $nestedResolve = array_replace_recursive($nestedResolve, $nested);
 
                     continue;
                 }

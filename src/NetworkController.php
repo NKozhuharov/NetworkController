@@ -424,7 +424,7 @@ abstract class NetworkController extends BaseController
                 $this->joinTranslationModelTableIfNecessary($this->model, $orderBy, $builder);
             }
 
-            if ($this->model->isFillable($orderBy)) {
+            if ($this->model->isFillable($orderBy) || ($this->model->isTranslatable() && $this->model->isTranslationAttribute($orderBy))) {
                 $builder = $builder->orderBy($orderBy, $sort);
                 return;
             }

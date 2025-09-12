@@ -772,7 +772,7 @@ abstract class NetworkController extends BaseController
      *
      * @param Request $request
      */
-    private function handleStoreUpdateResolvedRelations(Request $request): void
+    protected function handleStoreUpdateResolvedRelations(Request $request): void
     {
         if ($this->withoutRelationInsert) {
             return;

@@ -54,6 +54,8 @@ abstract class NetworkController extends BaseController
     const FILTER_RIGHT_MATCH = '*%';
     const FILTER_LEFT_MATCH = '%*';
     const FILTER_IN = 'in';
+    const FILTER_HAS = 'has';
+    const FILTER_DOESNT_HAVE = 'doesnthave';
 
     /**
      * The class of the model
@@ -614,6 +616,12 @@ abstract class NetworkController extends BaseController
                                 break;
                             case self::FILTER_IN:
                                 $builder->whereIn($filterKey, explode(',', $value));
+                                break;
+                            case self::FILTER_HAS:
+                                $builder->whereHas($filterKey);
+                                break;
+                            case self::FILTER_DOESNT_HAVE:
+                                $builder->whereDoesntHave($filterKey);
                                 break;
                             default:
                                 $this->applyFilter($builder, $filterKey, $value);

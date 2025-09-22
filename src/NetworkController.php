@@ -618,9 +618,17 @@ abstract class NetworkController extends BaseController
                                 $builder->whereIn($filterKey, explode(',', $value));
                                 break;
                             case self::FILTER_HAS:
-                                $builder->whereHas($filterKey);
+                                if (!in_array($filterKey, $this->filterAble, TRUE)) {
+                                    break;
+                                }
+                                $builder->whereHas($filterKey, function ($innerBuilder) use ($filterKey, $value) {
+                                    $innerBuilder->where($filterKey . '.' . $this->model->{$filterKey}()->getRelated()->getKeyName(), '=', $value);
+                                });
                                 break;
                             case self::FILTER_DOESNT_HAVE:
+                                if (!in_array($filterKey, $this->filterAble, TRUE)) {
+                                    break;
+                                }
                                 $builder->whereDoesntHave($filterKey);
                                 break;
                             default:

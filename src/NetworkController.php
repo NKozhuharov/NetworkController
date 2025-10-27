@@ -616,9 +616,15 @@ abstract class NetworkController extends BaseController
                                 $this->applyFilter($builder, $filterKey, $this->getFilterLikeSearchWordValue($value, $requestOperator), 'LIKE');
                                 break;
                             case self::FILTER_IN:
+                                if ($filterKey === 'id') {
+                                    $filterKey = $this->model->getQualifiedKeyName();
+                                }
                                 $builder->whereIn($filterKey, explode(',', $value));
                                 break;
                             case self::FILTER_NOT_IN:
+                                if ($filterKey === 'id') {
+                                    $filterKey = $this->model->getQualifiedKeyName();
+                                }
                                 $builder->whereNotIn($filterKey, explode(',', $value));
                                 break;
                             case self::FILTER_HAS:

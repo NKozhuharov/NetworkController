@@ -19,6 +19,7 @@ use League\Fractal\Resource\Collection;
 use League\Fractal\Resource\Item;
 use League\Fractal\Resource\ResourceAbstract;
 use League\Fractal\TransformerAbstract;
+use Nevestul4o\NetworkController\Exceptions\ErrorResponseException;
 use Nevestul4o\NetworkController\Models\BaseModel;
 use Nevestul4o\NetworkController\Transformers\Interface\NestedIncludesTransformer as NestedIncludesInterface;
 
@@ -439,7 +440,7 @@ abstract class NetworkController extends BaseController
                 return;
             }
 
-            throw new Exception('The provided order by column is not a valid column for the model - ' . $orderBy);
+            throw new ErrorResponseException('The provided order by column is not a valid column for the model - ' . $orderBy);
         }
 
         if (str_contains($orderBy, '.')) {

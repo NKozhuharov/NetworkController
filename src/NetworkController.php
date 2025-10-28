@@ -428,11 +428,6 @@ abstract class NetworkController extends BaseController
                 $this->joinTranslationModelTableIfNecessary($this->model, $orderBy, $builder);
             }
 
-            if ($this->model->isFillable($orderBy) || ($this->model->isTranslatable() && $this->model->isTranslationAttribute($orderBy))) {
-                $builder = $builder->orderBy($orderBy, $sort);
-                return;
-            }
-
             $scopeMethodName = 'orderBy' . str_replace('_', '', ucwords($orderBy, '_'));
             if (method_exists($this->model, 'scope'.ucfirst($scopeMethodName))) {
                 $builder = $builder->{$scopeMethodName}($sort);
@@ -440,7 +435,8 @@ abstract class NetworkController extends BaseController
                 return;
             }
 
-            throw new ErrorResponseException('The provided order by column is not a valid column for the model - ' . $orderBy);
+            $builder = $builder->orderBy($orderBy, $sort);
+            return;
         }
 
         if (str_contains($orderBy, '.')) {

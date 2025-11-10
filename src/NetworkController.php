@@ -212,7 +212,7 @@ abstract class NetworkController extends BaseController
 
         $approvedResolve = [];
         $nestedResolve   = [];
-        $resolve         = array_merge($this->defaultResolve, request()->input(self::RESOLVE_PARAM, []));
+        $resolve         = array_merge($this->defaultResolve, request()->array(self::RESOLVE_PARAM));
         if (!empty($resolve)) {
             foreach ($resolve as $resolveValue) {
                 if (str_contains($resolveValue, '.')) {
@@ -463,7 +463,8 @@ abstract class NetworkController extends BaseController
      */
     protected function applyQueryFromRequest(mixed &$builder, Request $request): void
     {
-        if ($request->isNotFilled(self::QUERY_PARAM) || empty($this->queryAble)) {
+        $queryWord = $request->get(self::QUERY_PARAM);
+        if (!is_string($queryWord) || empty($queryWord) || empty($this->queryAble)) {
             return;
         }
 
@@ -475,8 +476,7 @@ abstract class NetworkController extends BaseController
         }
 
         $builder = $builder->where(
-            function ($query) use ($request) {
-                $queryWord = $request->get(self::QUERY_PARAM);
+            function ($query) use ($queryWord) {
                 foreach ($this->queryAble as $column => $operators) {
                     //if the column is numeric, there is no explicit operator set, use the default %% operator
                     if (is_numeric($column)) {
@@ -533,12 +533,12 @@ abstract class NetworkController extends BaseController
         $sort    = $request->get(self::SORT_PARAM);
         $orderBy = $request->get(self::ORDER_BY_PARAM);
 
-        $sort = $sort ? trim(strtolower($sort)) : $this->defaultSort;
+        $sort = ($sort && is_string($sort)) ? trim(strtolower($sort)) : $this->defaultSort;
         if ($sort !== self::SORT_ASC && $sort !== self::SORT_DESC) {
             $sort = $this->defaultSort;
         }
 
-        $orderBy = $orderBy ? trim(strtolower($orderBy)) : $this->defaultOrder;
+        $orderBy = ($orderBy && is_string($orderBy)) ? trim(strtolower($orderBy)) : $this->defaultOrder;
 
         if (in_array($orderBy, $this->orderAble)) {
             if ($this->model->isTranslatable() && $this->model->isTranslationAttribute($orderBy)) {
@@ -751,9 +751,9 @@ abstract class NetworkController extends BaseController
                 break;
         }
 
-        if ($request->get(self::AGGREGATE_PARAM)) {
+        if ($request->filled(self::AGGREGATE_PARAM)) {
             $aggregations = [];
-            foreach ($request->get(self::AGGREGATE_PARAM) as $aggregation) {
+            foreach ($request->array(self::AGGREGATE_PARAM) as $aggregation) {
                 if (
                     !in_array($aggregation, $this->aggregateAble)
                     || !method_exists($this, self::AGGREGATE_PARAM . '_' . $aggregation)

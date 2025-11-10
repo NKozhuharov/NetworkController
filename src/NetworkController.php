@@ -398,12 +398,12 @@ abstract class NetworkController extends BaseController
      *
      * @param  mixed  $builder  The query builder instance that will be modified.
      * @param  string  $relation  The name of the relation to filter.
-     * @param  string  $filterValue  The value used for filtering the results in the specified relation.
+     * @param  string|null  $filterValue  The value used for filtering the results in the specified relation.
      * @param  string  $filterOperator  The operator defining the type of filter to apply (e.g., has or does not have the relation).
      *
      * @return void
      */
-    protected function applyRelationFilter(mixed &$builder, string $relation, string $filterValue, string $filterOperator): void
+    protected function applyRelationFilter(mixed &$builder, string $relation, string|null $filterValue, string $filterOperator): void
     {
         if (!in_array($relation, $this->filterAbleRelations, TRUE)) {
             return;
@@ -411,12 +411,22 @@ abstract class NetworkController extends BaseController
 
         switch ($filterOperator) {
             case self::FILTER_HAS:
+                if (empty($filterValue)) {
+                    $builder->whereHas($relation);
+                    return;
+                }
+
                 $builder->whereHas($relation, function ($innerBuilder) use ($relation, $filterValue) {
                     $innerBuilder->where($this->model->{$relation}()->getRelated()->getTable() . '.' . $this->model->{$relation}()->getRelated()->getKeyName(), $filterValue);
                 });
 
                 return;
             case self::FILTER_DOESNT_HAVE:
+                if (empty($filterValue)) {
+                    $builder->whereDoesntHave($relation);
+                    return;
+                }
+
                 $builder->whereDoesntHave($relation, function ($innerBuilder) use ($relation, $filterValue) {
                     $innerBuilder->where($this->model->{$relation}()->getRelated()->getTable() . '.' . $this->model->{$relation}()->getRelated()->getKeyName(), $filterValue);
                 });

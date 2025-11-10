@@ -690,7 +690,10 @@ abstract class NetworkController extends BaseController
                 self::ORDER_BY_PARAM  => !empty($this->orderAble) ? $this->orderAble : [],
                 self::SORT_PARAM      => [self::SORT_ASC, self::SORT_DESC],
                 self::LIMIT_PARAM     => [self::LIMIT_ALL, self::LIMIT_EMPTY],
-                self::FILTERS_PARAM   => !empty($this->filterAble) ? $this->filterAble : [],
+                self::FILTERS_PARAM   => [
+                    'attributes' => !empty($this->filterAble) ? $this->filterAble : [],
+                    'relations'  => !empty($this->filterAbleRelations) ? $this->filterAbleRelations : [],
+                ],
                 self::QUERY_PARAM     => !empty($this->queryAble) ? $this->queryAble : [],
                 self::RESOLVE_PARAM   => !empty($this->resolveAble) ? $this->resolveAble : [],
                 self::AGGREGATE_PARAM => !empty($this->aggregateAble) ? $this->aggregateAble : [],

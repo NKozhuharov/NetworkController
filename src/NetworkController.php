@@ -970,7 +970,7 @@ abstract class NetworkController extends BaseController
 
         try {
             $this->model = $this->model->findOrFail($id);
-        } catch (ModelNotFoundException $exception) {
+        } catch (ModelNotFoundException) {
             return $this->responseHelper->errorNotFoundJsonResponse();
         }
 
@@ -1012,7 +1012,7 @@ abstract class NetworkController extends BaseController
             $this->getByIdOrSlug($id)->delete();
 
             return $this->responseHelper->noContentResponse();
-        } catch (ModelNotFoundException $exception) {
+        } catch (ModelNotFoundException) {
             return $this->responseHelper->errorNotFoundJsonResponse();
         }
     }

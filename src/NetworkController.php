@@ -173,6 +173,7 @@ abstract class NetworkController extends BaseController
 
     /**
      * Create a new controller instance.
+     *
      * @throws Exception
      */
     public function __construct()
@@ -191,22 +192,22 @@ abstract class NetworkController extends BaseController
 
         $this->responseHelper = new JsonResponseHelper();
 
-        $this->orderAble = $this->model->getOrderAble();
-        $this->filterAble = $this->model->getFilterAble();
+        $this->orderAble   = $this->model->getOrderAble();
+        $this->filterAble  = $this->model->getFilterAble();
         $this->resolveAble = $this->model->getResolveAble();
         foreach ($this->resolveAble as $relation) {
             if (!str_contains($relation, '.') && !method_exists($this->model, $relation)) {
                 throw new Exception("Create a `$relation()` method to define relation in {$this->modelClass}");
             }
         }
-        $this->queryAble = $this->model->getQueryAble();
+        $this->queryAble     = $this->model->getQueryAble();
         $this->aggregateAble = $this->model->getAggregateAble();
 
         $this->getItemsPerPageFromGet();
 
         $approvedResolve = [];
-        $nestedResolve = [];
-        $resolve = array_merge($this->defaultResolve, request()->input(self::RESOLVE_PARAM, []));
+        $nestedResolve   = [];
+        $resolve         = array_merge($this->defaultResolve, request()->input(self::RESOLVE_PARAM, []));
         if (!empty($resolve)) {
             foreach ($resolve as $resolveValue) {
                 if (str_contains($resolveValue, '.')) {
@@ -249,16 +250,16 @@ abstract class NetworkController extends BaseController
      * If the model and the provided attribute are translatable, the `model_translation` table needs to be joined,
      * along with all translatable columns.
      *
-     * @param BaseModel $model
-     * @param string $attributeName
+     * @param  BaseModel  $model
+     * @param  string  $attributeName
      * @param $builder
      * @return void
      */
     private function joinTranslationModelTableIfNecessary(BaseModel $model, string $attributeName, &$builder): void
     {
         if (
-            !$model->isTranslatable() ||
-            !$model->isTranslationAttribute($attributeName)
+            !$model->isTranslatable()
+            || !$model->isTranslationAttribute($attributeName)
         ) {
             return;
         }
@@ -273,9 +274,9 @@ abstract class NetworkController extends BaseController
                     //if the model is sluggable and the filtering is for slug, all languages must be used
                     //therefore, if the translations table has already been joined, remove it and join it again
                     if (
-                        !$model->isSlugAble() ||
-                        $attributeName !== $model->getSlugPropertyName() ||
-                        empty($join->wheres)
+                        !$model->isSlugAble()
+                        || $attributeName !== $model->getSlugPropertyName()
+                        || empty($join->wheres)
                     ) {
                         return;
                     }
@@ -296,6 +297,7 @@ abstract class NetworkController extends BaseController
                 $model->translations()->getQualifiedForeignKeyName(),
                 $model->translations()->getQualifiedParentKeyName()
             )->select($selectQueryPart);
+
             return;
         }
 
@@ -320,8 +322,8 @@ abstract class NetworkController extends BaseController
     private function getItemsPerPageFromGet(): void
     {
         if (isset(request()->{self::LIMIT_PARAM}) && !empty(request()->{self::LIMIT_PARAM})) {
-            if (is_numeric(request()->{self::LIMIT_PARAM}) && (int)request()->{self::LIMIT_PARAM} > 0) {
-                $this->itemsPerPage = (int)request()->{self::LIMIT_PARAM};
+            if (is_numeric(request()->{self::LIMIT_PARAM}) && (int) request()->{self::LIMIT_PARAM} > 0) {
+                $this->itemsPerPage = (int) request()->{self::LIMIT_PARAM};
             } elseif (strtolower(request()->{self::LIMIT_PARAM}) === self::LIMIT_ALL) {
                 $this->itemsPerPage = self::LIMIT_ALL;
             } elseif (strtolower(request()->{self::LIMIT_PARAM}) === self::LIMIT_EMPTY) {
@@ -333,8 +335,8 @@ abstract class NetworkController extends BaseController
     /**
      * Prepares a string for filtering, according to the pre-defined match operators
      *
-     * @param string $searchWord
-     * @param string $operator
+     * @param  string  $searchWord
+     * @param  string  $operator
      * @return string
      */
     protected function getFilterLikeSearchWordValue(string $searchWord, string $operator): string
@@ -345,6 +347,7 @@ abstract class NetworkController extends BaseController
             case self::FILTER_LEFT_MATCH:
                 return '%' . mb_strtolower($searchWord);
         }
+
         return '%' . mb_strtolower($searchWord) . '%';
     }
 
@@ -353,9 +356,9 @@ abstract class NetworkController extends BaseController
      * Supports related models, one level deep.
      *
      * @param $builder
-     * @param string $filterKey
-     * @param string|null $filterValue
-     * @param string $filterOperator
+     * @param  string  $filterKey
+     * @param  string|null  $filterValue
+     * @param  string  $filterOperator
      */
     protected function applyFilter(&$builder, string $filterKey, string|null $filterValue, string $filterOperator = '='): void
     {
@@ -371,6 +374,7 @@ abstract class NetworkController extends BaseController
                 $this->joinTranslationModelTableIfNecessary($this->model->{$filterKey[0]}()->getModel(), $filterKey[1], $innerBuilder);
                 $this->applyFilterToBuilder($innerBuilder, $filterKey[1], $filterValue, $filterOperator);
             });
+
             return;
         }
 
@@ -384,9 +388,9 @@ abstract class NetworkController extends BaseController
      * Applies a filter to the query builder based on the provided key, value, and operator.
      *
      * @param $builder
-     * @param string $filterKey
-     * @param string|null $filterValue
-     * @param string $filterOperator
+     * @param  string  $filterKey
+     * @param  string|null  $filterValue
+     * @param  string  $filterOperator
      *
      * @return void
      */
@@ -394,10 +398,12 @@ abstract class NetworkController extends BaseController
     {
         if (!is_null($filterValue) && strtolower($filterValue) !== 'null') {
             $builder->where($filterKey, $filterOperator, $filterValue);
+
             return;
         }
         if ($filterOperator === '=') {
             $builder->whereNull($filterKey);
+
             return;
         }
         if ($filterOperator === '!=') {
@@ -429,13 +435,14 @@ abstract class NetworkController extends BaseController
             }
 
             $scopeMethodName = 'orderBy' . str_replace('_', '', ucwords($orderBy, '_'));
-            if (method_exists($this->model, 'scope'.ucfirst($scopeMethodName))) {
+            if (method_exists($this->model, 'scope' . ucfirst($scopeMethodName))) {
                 $builder = $builder->{$scopeMethodName}($sort);
 
                 return;
             }
 
             $builder = $builder->orderBy($orderBy, $sort);
+
             return;
         }
 
@@ -455,12 +462,12 @@ abstract class NetworkController extends BaseController
                 $orderByInnerQuery = $relation->getRelated();
                 $this->joinTranslationModelTableIfNecessary($relation->getRelated(), $orderBy[1], $orderByInnerQuery);
 
-                $tableName = $orderByInnerQuery->getModel()->getTable();
-                $ownerKeyName = $relation->getQualifiedOwnerKeyName();
+                $tableName      = $orderByInnerQuery->getModel()->getTable();
+                $ownerKeyName   = $relation->getQualifiedOwnerKeyName();
                 $foreignKeyName = $relation->getQualifiedForeignKeyName();
 
                 if ($tableName === $this->model->getTable()) {
-                    $tableName  .= ' as inner_table';
+                    $tableName    .= ' as inner_table';
                     $ownerKeyName = 'inner_table.' . $relation->getOwnerKeyName();
                 }
 
@@ -474,6 +481,7 @@ abstract class NetworkController extends BaseController
                 }
 
                 $builder = $builder->orderBy($orderByInnerQuery, $sort);
+
                 return;
             }
         }
@@ -484,7 +492,7 @@ abstract class NetworkController extends BaseController
     /**
      * Populates the meta property of the fractal resource
      *
-     * @param ResourceAbstract $resource
+     * @param  ResourceAbstract  $resource
      * @return void
      */
     protected function setFractalResourceMetaValue(ResourceAbstract $resource): void
@@ -499,7 +507,7 @@ abstract class NetworkController extends BaseController
                 self::QUERY_PARAM     => !empty($this->queryAble) ? $this->queryAble : [],
                 self::RESOLVE_PARAM   => !empty($this->resolveAble) ? $this->resolveAble : [],
                 self::AGGREGATE_PARAM => !empty($this->aggregateAble) ? $this->aggregateAble : [],
-                self::SLUG_PARAM      => $this->model->isSlugAble() ? $this->model->getSlugPropertyName() : false
+                self::SLUG_PARAM      => $this->model->isSlugAble() ? $this->model->getSlugPropertyName() : FALSE,
             ]
         );
     }
@@ -507,7 +515,7 @@ abstract class NetworkController extends BaseController
     /**
      * Initialize the builder for the 'index' function. Allows custom logic.
      *
-     * @param Request $request
+     * @param  Request  $request
      * @return Builder|BaseModel
      */
     protected function getIndexQueryBuilder(Request $request): Builder|BaseModel
@@ -518,7 +526,7 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a collection of items from the current model after a GET request
      *
-     * @param Request $request
+     * @param  Request  $request
      *
      * @return JsonResponse
      * @throws Exception
@@ -540,7 +548,7 @@ abstract class NetworkController extends BaseController
                     foreach ($this->queryAble as $column => $operators) {
                         //if the column is numeric, there is no explicit operator set, use the default %% operator
                         if (is_numeric($column)) {
-                            $column = $operators;
+                            $column    = $operators;
                             $operators = self::FILTER_FULL_MATCH;
                         }
                         if (method_exists($this->model, $column) && in_array($column, $this->model->getWith())) {
@@ -664,7 +672,7 @@ abstract class NetworkController extends BaseController
                 $fractalCollection = new Collection($builder->get(), $this->transformerInstance);
                 break;
             default:
-                $paginator = $builder->paginate($this->itemsPerPage);
+                $paginator         = $builder->paginate($this->itemsPerPage);
                 $fractalCollection = new Collection($paginator->getCollection(), $this->transformerInstance);
                 $fractalCollection->setPaginator(new IlluminatePaginatorAdapter($paginator));
                 break;
@@ -696,7 +704,7 @@ abstract class NetworkController extends BaseController
     /**
      * Select an entry from the database, using the provided id or slug (if the model is slug-able)
      *
-     * @param int|string $id
+     * @param  int|string  $id
      * @return Model
      */
     protected function getByIdOrSlug(int|string $id): Model
@@ -707,14 +715,15 @@ abstract class NetworkController extends BaseController
         if ($this->model->isTranslatable()) {
             return $this->model::whereTranslation($this->model->getSlugPropertyName(), $id)->firstOrFail();
         }
+
         return $this->model::where($this->model->getSlugPropertyName(), $id)->firstOrFail();
     }
 
     /**
      * Returns a single item from the current model after a GET request
      *
-     * @param Request $request
-     * @param int|string $id
+     * @param  Request  $request
+     * @param  int|string  $id
      * @return JsonResponse
      */
     public function show(Request $request, int|string $id): JsonResponse
@@ -735,7 +744,7 @@ abstract class NetworkController extends BaseController
     /**
      * Retrieves the translations for the given model by ID or slug.
      *
-     * @param int|string $id
+     * @param  int|string  $id
      *
      * @return JsonResponse
      */
@@ -749,7 +758,7 @@ abstract class NetworkController extends BaseController
         $object = $this->getByIdOrSlug($id);
         foreach ($this->model->getTranslatedAttributes() as $translatedAttribute) {
             foreach (config('translatable.locales') as $locale) {
-                $response[$translatedAttribute][$locale] = $object->getTranslation($locale)->{$translatedAttribute} ?? null;
+                $response[$translatedAttribute][$locale] = $object->getTranslation($locale)->{$translatedAttribute} ?? NULL;
             }
         }
 
@@ -759,7 +768,7 @@ abstract class NetworkController extends BaseController
     /**
      * Attempt to recover a deleted object, based on the current request
      *
-     * @param Request $request
+     * @param  Request  $request
      * @return Model|null
      */
     private function recoverDeletedObject(Request $request): ?Model
@@ -776,8 +785,10 @@ abstract class NetworkController extends BaseController
         $deletedObject = $deletedObject->first();
         if ($deletedObject !== NULL) {
             $deletedObject->restore();
+
             return $deletedObject;
         }
+
         return NULL;
     }
 
@@ -785,7 +796,7 @@ abstract class NetworkController extends BaseController
      * Check if resolved objects are provided in Store or Update requests and use the defined relations
      * to set the foreign key values of the current model
      *
-     * @param Request $request
+     * @param  Request  $request
      */
     protected function handleStoreUpdateResolvedRelations(Request $request): void
     {
@@ -828,7 +839,7 @@ abstract class NetworkController extends BaseController
      * Inserts an item from the current model after a POST request
      * Will attempt to recover deleted items
      *
-     * @param Request $request
+     * @param  Request  $request
      *
      * @return JsonResponse
      */
@@ -842,6 +853,7 @@ abstract class NetworkController extends BaseController
             $recoveredObject = $this->recoverDeletedObject($request);
             if (!empty($recoveredObject)) {
                 $recoveredObject->loadMissing($this->model->getWith());
+
                 return $this->responseHelper->fractalResourceToJsonResponse(
                     new Item($recoveredObject, $this->transformerInstance)
                 );
@@ -873,8 +885,8 @@ abstract class NetworkController extends BaseController
     /**
      * Updates an item from the current model after a PUT/PATCH request
      *
-     * @param Request $request
-     * @param int $id
+     * @param  Request  $request
+     * @param  int  $id
      * @return JsonResponse
      */
     public function update(Request $request, int $id): JsonResponse
@@ -916,7 +928,7 @@ abstract class NetworkController extends BaseController
     /**
      * Deletes an item from the current model after a DELETE request
      *
-     * @param int|string $id
+     * @param  int|string  $id
      *
      * @return JsonResponse
      * @throws Exception
@@ -936,8 +948,8 @@ abstract class NetworkController extends BaseController
      * Validates the input when inserting/updating.
      * All models should override this method
      *
-     * @param Request $request
-     * @param int|null $id
+     * @param  Request  $request
+     * @param  int|null  $id
      */
     protected abstract function validateInput(Request $request, int $id = NULL);
 }

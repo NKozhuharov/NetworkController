@@ -137,6 +137,9 @@ This will translate to `date > 2020-10-06`. Allowed operator values are:
 - `*%` - right match search, translates to `LIKE '<value>%'`
 - `%*` - left match search, translates to `LIKE '%<value>'`
 - `in` - a list of values, separated by a comma (**,**), or one value. Works like SQL **IN** clause.
+- `notin` - not in a list of values, separated by a comma (,), or one value. Works like SQL IN clause.
+- `has` - has the specified relation
+- `doesnthave` - doesn't have the specified relation
 
 All other values of the operator array, will be ignored, and the filter will be considered as `equals`.
 

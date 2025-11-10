@@ -3,7 +3,6 @@
 namespace Nevestul4o\NetworkController\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use League\Fractal\TransformerAbstract;
 use Nevestul4o\NetworkController\NetworkController;
 use Nevestul4o\NetworkController\Transformers\GenericTransformer;
 
@@ -25,19 +24,29 @@ abstract class BaseModel extends Model
     const QUERYABLE_RIGHT_MATCH = NetworkController::FILTER_RIGHT_MATCH;
     const QUERYABLE_FULL_MATCH = NetworkController::FILTER_FULL_MATCH;
 
+
     /**
-     * In case we have values we can order by, custom and default
+     * The attributes that can be used for ordering a collection
+     * Define fields that support sorting in ascending or descending order
      *
      * @var array
      */
     protected array $orderAble;
 
     /**
-     * In case we have values we can filter by, no filter default
+     * The attributes, which can be used to filter a collection
      *
      * @var array
      */
     protected array $filterAble;
+
+    /**
+     * The relations, which can be used to filter a collection
+     * Used for 'has' and 'doesnthave' filters
+     *
+     * @var array
+     */
+    protected array $filterAbleRelations;
 
     /**
      * In case the object allows resolving of child objects, we can add them here.
@@ -97,42 +106,32 @@ abstract class BaseModel extends Model
         return $this->transformerClass;
     }
 
-    /**
-     * @return array
-     */
     public function getQueryAble(): array
     {
         return $this->queryAble ?? [];
     }
 
 
-    /**
-     * @return array
-     */
     public function getOrderAble(): array
     {
         return $this->orderAble ?? [];
     }
 
-    /**
-     * @return array
-     */
     public function getFilterAble(): array
     {
         return $this->filterAble ?? [];
     }
 
-    /**
-     * @return array
-     */
+    public function getFillableRelations(): array
+    {
+        return $this->filterAbleRelations ?? [];
+    }
+
     public function getResolveAble(): array
     {
         return $this->resolveAble ?? [];
     }
 
-    /**
-     * @return array
-     */
     public function getAggregateAble(): array
     {
         return $this->aggregateAble ?? [];
@@ -159,7 +158,7 @@ abstract class BaseModel extends Model
     }
 
     /**
-     * Gets an array of the fields, related to the object.
+     * Gets an array of the fields related to the object.
      *
      * Fixed to work alongside the with() and without() eager loading methods
      *
@@ -173,7 +172,7 @@ abstract class BaseModel extends Model
     }
 
     /**
-     * Gets an array of the fields, related to the object without the eager loaded
+     * Gets an array of the fields related to the object without the eager loaded
      *
      * @return array
      */
@@ -195,7 +194,7 @@ abstract class BaseModel extends Model
     }
 
     /**
-     * Check it fhe model is using the Laravel's SoftDeletes trait
+     * Check it the model is using the Laravel's SoftDeletes trait
      *
      * @return bool
      */
@@ -231,7 +230,7 @@ abstract class BaseModel extends Model
     }
 
     /**
-     * What is the slug property name of the model
+     * Get the slug property name of the model
      *
      * @return string
      */

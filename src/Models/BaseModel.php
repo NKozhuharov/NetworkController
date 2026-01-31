@@ -111,10 +111,9 @@ abstract class BaseModel extends Model
         return $this->queryAble ?? [];
     }
 
-
     public function getOrderAble(): array
     {
-        return $this->orderAble ?? [];
+        return ['id', ...($this->orderAble ?? [])];
     }
 
     public function getFilterAble(): array

@@ -61,14 +61,14 @@ class UploadController extends BaseController
      *
      * @var string
      */
-    private string $uploadsPath;
+    protected string $uploadsPath;
 
     /**
      * Path, where all images are uploaded
      *
      * @var string
      */
-    private string $imagesPath;
+    protected string $imagesPath;
 
     /**
      * The key in the request, which contains the files
@@ -204,14 +204,18 @@ class UploadController extends BaseController
      */
     public function __construct()
     {
-        $this->uploadsPath = config('networkcontroller.uploads.path');
-        if (empty($this->uploadsPath)) {
-            throw new Exception('To use the uploads controller, set UPLOADS_PATH configuration variable in the .env file to a non-empty string!');
+        if (!empty($this->uploadsPath)) {
+            $this->uploadsPath = config('networkcontroller.uploads.path');
+            if (empty($this->uploadsPath)) {
+                throw new Exception('To use the uploads controller, set UPLOADS_PATH configuration variable in the .env file to a non-empty string!');
+            }
         }
 
-        $this->imagesPath = config('networkcontroller.images.path');
-        if (empty($this->imagesPath)) {
-            throw new Exception('To use the uploads controller, set IMAGES_PATH configuration variable in the .env file to a non-empty string!');
+        if (!empty($this->imagesPath)) {
+            $this->imagesPath = config('networkcontroller.images.path');
+            if (empty($this->imagesPath)) {
+                throw new Exception('To use the uploads controller, set IMAGES_PATH configuration variable in the .env file to a non-empty string!');
+            }
         }
 
         $this->uploadsPath = base_path() . '/' . $this->uploadsPath;

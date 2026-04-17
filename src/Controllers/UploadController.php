@@ -204,14 +204,14 @@ class UploadController extends BaseController
      */
     public function __construct()
     {
-        if (!empty($this->uploadsPath)) {
+        if (empty($this->uploadsPath)) {
             $this->uploadsPath = config('networkcontroller.uploads.path');
             if (empty($this->uploadsPath)) {
                 throw new Exception('To use the uploads controller, set UPLOADS_PATH configuration variable in the .env file to a non-empty string!');
             }
         }
 
-        if (!empty($this->imagesPath)) {
+        if (empty($this->imagesPath)) {
             $this->imagesPath = config('networkcontroller.images.path');
             if (empty($this->imagesPath)) {
                 throw new Exception('To use the uploads controller, set IMAGES_PATH configuration variable in the .env file to a non-empty string!');

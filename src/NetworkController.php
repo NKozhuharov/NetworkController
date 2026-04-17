@@ -260,7 +260,7 @@ abstract class NetworkController extends BaseController
      * @param $builder
      * @return void
      */
-    private function joinTranslationModelTableIfNecessary(BaseModel $model, string $attributeName, &$builder): void
+    protected function joinTranslationModelTableIfNecessary(BaseModel $model, string $attributeName, &$builder): void
     {
         if (!$model->isTranslatable() || !$model->isTranslationAttribute($attributeName)) {
             return;
@@ -322,7 +322,7 @@ abstract class NetworkController extends BaseController
      * @param  Request  $request
      * @return int|string
      */
-    private function getItemsPerPageFromRequest(Request $request): int|string
+    protected function getItemsPerPageFromRequest(Request $request): int|string
     {
         $itemsPerPage = $request->get(self::LIMIT_PARAM);
 

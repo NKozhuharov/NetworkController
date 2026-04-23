@@ -20,11 +20,13 @@ use League\Fractal\Resource\Item;
 use League\Fractal\Resource\ResourceAbstract;
 use League\Fractal\TransformerAbstract;
 use Nevestul4o\NetworkController\Models\BaseModel;
+use Nevestul4o\NetworkController\Traits\AuthorizeRequest;
 use Nevestul4o\NetworkController\Transformers\Interface\NestedIncludesTransformer as NestedIncludesInterface;
 
 abstract class NetworkController extends BaseController
 {
     use ValidatesRequests;
+    use AuthorizeRequest;
 
     const ORDER_BY_PARAM = 'orderby';
     const SORT_PARAM = 'sort';
@@ -189,6 +191,17 @@ abstract class NetworkController extends BaseController
         }
 
         $this->model = new $this->modelClass;
+
+        $this->middleware(function ($request, $next) {
+            match ($request->route()?->getActionMethod()) {
+                'store' => $this->authorizeStore($request),
+                'update' => $this->authorizeUpdate($request),
+                'destroy' => $this->authorizeDestroy($request),
+                default => null,
+            };
+
+            return $next($request);
+        });
 
         $transformerClass = $this->model->getTransformerClass();
         if (empty($transformerClass)) {

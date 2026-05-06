@@ -8,20 +8,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Query\JoinClause;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
-use Illuminate\Support\Facades\DB;
 use League\Fractal\Pagination\IlluminatePaginatorAdapter;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Resource\Item;
 use League\Fractal\Resource\ResourceAbstract;
 use League\Fractal\TransformerAbstract;
+use Nevestul4o\NetworkController\Filters\FilterOperators;
+use Nevestul4o\NetworkController\Filters\QueryFilterService;
 use Nevestul4o\NetworkController\Models\BaseModel;
 use Nevestul4o\NetworkController\Traits\AuthorizeRequest;
 use Nevestul4o\NetworkController\Transformers\Interface\NestedIncludesTransformer as NestedIncludesInterface;
+use Nevestul4o\NetworkController\Translation\TranslationService;
 
 abstract class NetworkController extends BaseController
 {
@@ -46,19 +47,6 @@ abstract class NetworkController extends BaseController
     const SORT_DESC = 'desc';
     const LIMIT_ALL = 'all';
     const LIMIT_EMPTY = 'empty';
-
-    const FILTER_NOT = 'not';
-    const FILTER_GREATER_THAN = 'gt';
-    const FILTER_LESSER_THAN = 'lt';
-    const FILTER_GREATER_THAN_OR_EQUALS = 'gte';
-    const FILTER_LESSER_THAN_OR_EQUALS = 'lte';
-    const FILTER_FULL_MATCH = '%%';
-    const FILTER_RIGHT_MATCH = '*%';
-    const FILTER_LEFT_MATCH = '%*';
-    const FILTER_IN = 'in';
-    const FILTER_NOT_IN = 'notin';
-    const FILTER_HAS = 'has';
-    const FILTER_DOESNT_HAVE = 'doesnthave';
 
     /**
      * The class of the model
@@ -184,8 +172,10 @@ abstract class NetworkController extends BaseController
      *
      * @throws Exception
      */
-    public function __construct()
-    {
+    public function __construct(
+        protected QueryFilterService $filterService,
+        protected TranslationService $translationService,
+    ) {
         if (empty($this->modelClass)) {
             throw new Exception("Define a model class in order to use NetworkController");
         }
@@ -211,21 +201,21 @@ abstract class NetworkController extends BaseController
 
         $this->responseHelper = new JsonResponseHelper();
 
-        $this->orderAble           = $this->model->getOrderAble();
-        $this->filterAble          = $this->model->getFilterAble();
+        $this->orderAble = $this->model->getOrderAble();
+        $this->filterAble = $this->model->getFilterAble();
         $this->filterAbleRelations = $this->model->getFillableRelations();
-        $this->resolveAble         = $this->model->getResolveAble();
+        $this->resolveAble = $this->model->getResolveAble();
         foreach ($this->resolveAble as $relation) {
             if (!str_contains($relation, '.') && !method_exists($this->model, $relation)) {
                 throw new Exception("Create a `$relation()` method to define relation in $this->modelClass");
             }
         }
-        $this->queryAble     = $this->model->getQueryAble();
+        $this->queryAble = $this->model->getQueryAble();
         $this->aggregateAble = $this->model->getAggregateAble();
 
         $approvedResolve = [];
-        $nestedResolve   = [];
-        $resolve         = array_merge($this->defaultResolve, request()->array(self::RESOLVE_PARAM));
+        $nestedResolve = [];
+        $resolve = array_merge($this->defaultResolve, request()->array(self::RESOLVE_PARAM));
         if (!empty($resolve)) {
             foreach ($resolve as $resolveValue) {
                 if (str_contains($resolveValue, '.')) {
@@ -265,74 +255,10 @@ abstract class NetworkController extends BaseController
     }
 
     /**
-     * If the model and the provided attribute are translatable, the `model_translation` table needs to be joined,
-     * along with all translatable columns.
-     *
-     * @param  BaseModel  $model
-     * @param  string  $attributeName
-     * @param $builder
-     * @return void
-     */
-    protected function joinTranslationModelTableIfNecessary(BaseModel $model, string $attributeName, &$builder): void
-    {
-        if (!$model->isTranslatable() || !$model->isTranslationAttribute($attributeName)) {
-            return;
-        }
-
-        $translationTableName = $model->translations()->getRelated()->getTable();
-
-        //check if this table is already joined
-        if (!empty($builder->getQuery()->joins)) {
-            foreach ($builder->getQuery()->joins as $joinKey => $join) {
-                /** @var JoinClause $join */
-                if ($join->table === $translationTableName) {
-                    //if the model is sluggable and the filtering is for slug, all languages must be used.
-                    //therefore, if the translation table has already been joined, remove it and join it again
-                    if (
-                        !$model->isSlugAble()
-                        || $attributeName !== $model->getSlugPropertyName()
-                        || empty($join->wheres)
-                    ) {
-                        return;
-                    }
-                    unset($builder->getQuery()->joins[$joinKey]);
-                    break;
-                }
-            }
-        }
-
-        $selectQueryPart = [$model->getTable() . '.*'];
-        foreach ($model->getTranslatedAttributes() as $translatedAttribute) {
-            $selectQueryPart[] = $translationTableName . '.' . $translatedAttribute;
-        }
-
-        if ($model->isSlugAble() && $attributeName === $model->getSlugPropertyName()) {
-            $builder = $builder->leftJoin(
-                $translationTableName,
-                $model->translations()->getQualifiedForeignKeyName(),
-                $model->translations()->getQualifiedParentKeyName()
-            )->select($selectQueryPart);
-
-            return;
-        }
-
-        $builder = $builder->leftJoin($translationTableName, function ($leftJoin) use ($model) {
-            $leftJoin->on(
-                $model->translations()->getQualifiedForeignKeyName(),
-                $model->translations()->getQualifiedParentKeyName()
-            );
-            $leftJoin->on(
-                'locale',
-                DB::raw("'" . app('Astrotomic\Translatable\Locales')->current() . "'")
-            );
-        })->select($selectQueryPart);
-    }
-
-    /**
      * Searches the request for 'limit' parameter;
      * If it's available, overrides the default itemsPerPage property value
      *
-     * @param  Request  $request
+     * @param Request $request
      * @return int|string
      */
     protected function getItemsPerPageFromRequest(Request $request): int|string
@@ -343,8 +269,8 @@ abstract class NetworkController extends BaseController
             return $this->itemsPerPage;
         }
 
-        if (is_numeric($itemsPerPage) && (int) $itemsPerPage > 0) {
-            return (int) $itemsPerPage;
+        if (is_numeric($itemsPerPage) && (int)$itemsPerPage > 0) {
+            return (int)$itemsPerPage;
         }
 
         $itemsPerPage = strtolower($itemsPerPage);
@@ -356,131 +282,11 @@ abstract class NetworkController extends BaseController
     }
 
     /**
-     * Prepares a string for filtering, according to the pre-defined match operators
-     *
-     * @param  string  $searchWord
-     * @param  string  $operator
-     * @return string
-     */
-    protected function getFilterLikeSearchWordValue(string $searchWord, string $operator): string
-    {
-        return match ($operator) {
-            self::FILTER_RIGHT_MATCH => mb_strtolower($searchWord) . '%',
-            self::FILTER_LEFT_MATCH => '%' . mb_strtolower($searchWord),
-            default => '%' . mb_strtolower($searchWord) . '%',
-        };
-    }
-
-    /**
-     * Applies a filter to the given query builder based on the provided key, value, and operator.
-     * Supports nested filtering for related models if the filter key indicates a relationship.
-     *
-     * @param  mixed  $builder  The query builder instance to which the filter will be applied.
-     * @param  string  $filterKey  The key or column name to filter against. Can include relationships (e.g., "relation.key").
-     * @param  string|null  $filterValue  The value to filter by. Null values are allowed to indicate no filtering.
-     * @param  string  $filterOperator  The operator to use for the filter (default '='). Examples include '=', '<', '>'.
-     *
-     * @return void
-     */
-    protected function applyFilter(mixed &$builder, string $filterKey, string|null $filterValue, string $filterOperator = '='): void
-    {
-        if (str_contains($filterKey, '.')) {
-            $filterKey = explode('.', $filterKey);
-            if (
-                !in_array($filterKey[0], $this->model->getResolveAble(), TRUE)
-                || !in_array($filterKey[1], $this->model->{$filterKey[0]}()->getRelated()->getFilterable(), TRUE)
-            ) {
-                return;
-            }
-            $builder->whereHas($filterKey[0], function ($innerBuilder) use ($filterKey, $filterValue, $filterOperator) {
-                $this->joinTranslationModelTableIfNecessary($this->model->{$filterKey[0]}()->getModel(), $filterKey[1], $innerBuilder);
-                $this->applyFilterToBuilder($innerBuilder, $filterKey[1], $filterValue, $filterOperator);
-            });
-
-            return;
-        }
-
-        if (in_array($filterKey, $this->filterAble, TRUE)) {
-            $this->joinTranslationModelTableIfNecessary($this->model, $filterKey, $builder);
-            $this->applyFilterToBuilder($builder, $filterKey, $filterValue, $filterOperator);
-        }
-    }
-
-    /**
-     * Applies a relational filter to the query builder by modifying its conditions based on the given relation, filter value, and operator.
-     *
-     * @param  mixed  $builder  The query builder instance that will be modified.
-     * @param  string  $relation  The name of the relation to filter.
-     * @param  string|null  $filterValue  The value used for filtering the results in the specified relation.
-     * @param  string  $filterOperator  The operator defining the type of filter to apply (e.g., has or does not have the relation).
-     *
-     * @return void
-     */
-    protected function applyRelationFilter(mixed &$builder, string $relation, string|null $filterValue, string $filterOperator): void
-    {
-        if (!in_array($relation, $this->filterAbleRelations, TRUE)) {
-            return;
-        }
-
-        switch ($filterOperator) {
-            case self::FILTER_HAS:
-                if (empty($filterValue)) {
-                    $builder->whereHas($relation);
-                    return;
-                }
-
-                $builder->whereHas($relation, function ($innerBuilder) use ($relation, $filterValue) {
-                    $innerBuilder->where($this->model->{$relation}()->getRelated()->getTable() . '.' . $this->model->{$relation}()->getRelated()->getKeyName(), $filterValue);
-                });
-
-                return;
-            case self::FILTER_DOESNT_HAVE:
-                if (empty($filterValue)) {
-                    $builder->whereDoesntHave($relation);
-                    return;
-                }
-
-                $builder->whereDoesntHave($relation, function ($innerBuilder) use ($relation, $filterValue) {
-                    $innerBuilder->where($this->model->{$relation}()->getRelated()->getTable() . '.' . $this->model->{$relation}()->getRelated()->getKeyName(), $filterValue);
-                });
-
-                return;
-        }
-    }
-
-    /**
-     * Applies a filter to the query builder based on the provided key, value, and operator.
-     *
-     * @param $builder
-     * @param  string  $filterKey
-     * @param  string|null  $filterValue
-     * @param  string  $filterOperator
-     *
-     * @return void
-     */
-    protected function applyFilterToBuilder(&$builder, string $filterKey, string|null $filterValue, string $filterOperator = '='): void
-    {
-        if (!is_null($filterValue) && strtolower($filterValue) !== 'null') {
-            $builder->where($filterKey, $filterOperator, $filterValue);
-
-            return;
-        }
-        if ($filterOperator === '=') {
-            $builder->whereNull($filterKey);
-
-            return;
-        }
-        if ($filterOperator === '!=') {
-            $builder->whereNotNull($filterKey);
-        }
-    }
-
-    /**
      * Applies a query filter to the given query builder based on the request parameters.
      * Filters are applied to queryable columns, including handling related models and translatable attributes.
      *
-     * @param  mixed  $builder  The query builder instance to modify.
-     * @param  Request  $request  The HTTP request containing query parameters.
+     * @param mixed $builder The query builder instance to modify.
+     * @param Request $request The HTTP request containing query parameters.
      *
      * @return void
      */
@@ -495,7 +301,7 @@ abstract class NetworkController extends BaseController
             if (is_numeric($column)) {
                 $column = $operators; //if the column is numeric, there is no explicit operator set
             }
-            $this->joinTranslationModelTableIfNecessary($this->model, $column, $builder);
+            $this->translationService->joinTranslationModelTableIfNecessary($this->model, $column, $builder);
         }
 
         $builder = $builder->where(
@@ -503,8 +309,8 @@ abstract class NetworkController extends BaseController
                 foreach ($this->queryAble as $column => $operators) {
                     //if the column is numeric, there is no explicit operator set, use the default %% operator
                     if (is_numeric($column)) {
-                        $column    = $operators;
-                        $operators = self::FILTER_FULL_MATCH;
+                        $column = $operators;
+                        $operators = FilterOperators::FILTER_FULL_MATCH;
                     }
                     if (method_exists($this->model, $column) && in_array($column, $this->model->getWith())) {
                         $relatedModel = $this->model->{$column}()->getRelated();
@@ -515,7 +321,7 @@ abstract class NetworkController extends BaseController
                                     function ($q) use ($relatedQueryableKey, $relatedQueryableOperators, $queryWord) {
                                         $q->whereTranslationLike(
                                             $relatedQueryableKey,
-                                            $this->getFilterLikeSearchWordValue($queryWord, $relatedQueryableOperators)
+                                            $this->filterService->getFilterLikeSearchWordValue($queryWord, FilterOperators::from($relatedQueryableOperators))
                                         );
                                     }
                                 );
@@ -528,16 +334,18 @@ abstract class NetworkController extends BaseController
                                     $q->where(
                                         $relatedQueryableKey,
                                         'LIKE',
-                                        $this->getFilterLikeSearchWordValue($queryWord, $relatedQueryableOperators)
+                                        $this->filterService->getFilterLikeSearchWordValue($queryWord, FilterOperators::from($relatedQueryableOperators))
                                     );
                                 }
                             );
                         }
-                    } elseif (!in_array($column, $this->resolveAble)) {
+                        continue;
+                    }
+                    if (!in_array($column, $this->resolveAble)) {
                         $query->orWhere(
                             $column,
                             'LIKE',
-                            $this->getFilterLikeSearchWordValue($queryWord, $operators)
+                            $this->filterService->getFilterLikeSearchWordValue($queryWord, FilterOperators::from($operators))
                         );
                     }
                 }
@@ -548,12 +356,12 @@ abstract class NetworkController extends BaseController
      * Applies orderBy clause to the provided builder, by using the provided sort and order by options.
      * Supports related models, one level deep.
      *
-     * @param  mixed  $builder
-     * @param  Request  $request
+     * @param mixed $builder
+     * @param Request $request
      */
     protected function applySortAndOrderFromRequest(mixed &$builder, Request $request): void
     {
-        $sort    = $request->get(self::SORT_PARAM);
+        $sort = $request->get(self::SORT_PARAM);
         $orderBy = $request->get(self::ORDER_BY_PARAM);
 
         $sort = ($sort && is_string($sort)) ? trim(strtolower($sort)) : $this->defaultSort;
@@ -565,7 +373,7 @@ abstract class NetworkController extends BaseController
 
         if (in_array($orderBy, $this->orderAble)) {
             if ($this->model->isTranslatable() && $this->model->isTranslationAttribute($orderBy)) {
-                $this->joinTranslationModelTableIfNecessary($this->model, $orderBy, $builder);
+                $this->translationService->joinTranslationModelTableIfNecessary($this->model, $orderBy, $builder);
             }
 
             $scopeMethodName = 'orderBy' . str_replace('_', '', ucwords($orderBy, '_'));
@@ -594,14 +402,14 @@ abstract class NetworkController extends BaseController
                 }
 
                 $orderByInnerQuery = $relation->getRelated();
-                $this->joinTranslationModelTableIfNecessary($relation->getRelated(), $orderBy[1], $orderByInnerQuery);
+                $this->translationService->joinTranslationModelTableIfNecessary($relation->getRelated(), $orderBy[1], $orderByInnerQuery);
 
-                $tableName      = $orderByInnerQuery->getModel()->getTable();
-                $ownerKeyName   = $relation->getQualifiedOwnerKeyName();
+                $tableName = $orderByInnerQuery->getModel()->getTable();
+                $ownerKeyName = $relation->getQualifiedOwnerKeyName();
                 $foreignKeyName = $relation->getQualifiedForeignKeyName();
 
                 if ($tableName === $this->model->getTable()) {
-                    $tableName    .= ' as inner_table';
+                    $tableName .= ' as inner_table';
                     $ownerKeyName = 'inner_table.' . $relation->getOwnerKeyName();
                 }
 
@@ -630,79 +438,26 @@ abstract class NetworkController extends BaseController
      * Supports a variety of filter types, including comparison operators,
      * inclusion and exclusion conditions, and relation-based filters.
      *
-     * @param  mixed  $builder  The query builder to which the filters will be applied.
-     * @param  Request  $request  The current HTTP request containing filter parameters.
+     * @param mixed $builder The query builder to which the filters will be applied.
+     * @param Request $request The current HTTP request containing filter parameters.
      *
      * @return void
      */
     protected function applyFiltersFromRequest(mixed &$builder, Request $request): void
     {
         $filters = array_merge($this->defaultFilters, $request->array(self::FILTERS_PARAM));
+
         if (empty($filters)) {
             return;
         }
 
-        foreach ($filters as $filterKey => $filterValue) {
-            //ignore filters that have a deeper-than-one relation defined
-            if (substr_count($filterKey, '.') > 1) {
-                continue;
-            }
-
-            if (!is_array($filterValue)) {
-                $this->applyFilter($builder, $filterKey, $filterValue);
-                continue;
-            }
-
-            foreach ($filterValue as $requestOperator => $value) {
-                switch ($requestOperator) {
-                    case self::FILTER_NOT:
-                        $this->applyFilter($builder, $filterKey, $value, '!=');
-                        break;
-                    case self::FILTER_GREATER_THAN:
-                        $this->applyFilter($builder, $filterKey, $value, '>');
-                        break;
-                    case self::FILTER_LESSER_THAN:
-                        $this->applyFilter($builder, $filterKey, $value, '<');
-                        break;
-                    case self::FILTER_GREATER_THAN_OR_EQUALS:
-                        $this->applyFilter($builder, $filterKey, $value, '>=');
-                        break;
-                    case self::FILTER_LESSER_THAN_OR_EQUALS:
-                        $this->applyFilter($builder, $filterKey, $value, '<=');
-                        break;
-                    case self::FILTER_FULL_MATCH:
-                    case self::FILTER_RIGHT_MATCH:
-                    case self::FILTER_LEFT_MATCH:
-                        $this->applyFilter($builder, $filterKey, $this->getFilterLikeSearchWordValue($value, $requestOperator), 'LIKE');
-                        break;
-                    case self::FILTER_IN:
-                        if ($filterKey === 'id') {
-                            $filterKey = $this->model->getQualifiedKeyName();
-                        }
-                        $builder->whereIn($filterKey, explode(',', $value));
-                        break;
-                    case self::FILTER_NOT_IN:
-                        if ($filterKey === 'id') {
-                            $filterKey = $this->model->getQualifiedKeyName();
-                        }
-                        $builder->whereNotIn($filterKey, explode(',', $value));
-                        break;
-                    case self::FILTER_HAS:
-                    case self::FILTER_DOESNT_HAVE:
-                        $this->applyRelationFilter($builder, $filterKey, $value, $requestOperator);
-                        break;
-                    default:
-                        $this->applyFilter($builder, $filterKey, $value);
-                        break;
-                }
-            }
-        }
+        $this->filterService->applyFilters($builder, $this->model, $filters);
     }
 
     /**
      * Populates the meta-property of the fractal resource
      *
-     * @param  ResourceAbstract  $resource
+     * @param ResourceAbstract $resource
      * @return void
      */
     protected function setFractalResourceMetaValue(ResourceAbstract $resource): void
@@ -728,7 +483,7 @@ abstract class NetworkController extends BaseController
     /**
      * Initialize the builder for the 'index' function. Allows custom logic.
      *
-     * @param  Request  $request
+     * @param Request $request
      * @return Builder|BaseModel
      */
     protected function getIndexQueryBuilder(Request $request): Builder|BaseModel
@@ -739,7 +494,7 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a collection of items from the current model after a GET request
      *
-     * @param  Request  $request
+     * @param Request $request
      *
      * @return JsonResponse
      * @throws Exception
@@ -768,7 +523,7 @@ abstract class NetworkController extends BaseController
                 $fractalCollection = new Collection($builder->get(), $this->transformerInstance);
                 break;
             default:
-                $paginator         = $builder->paginate($itemsPerPage);
+                $paginator = $builder->paginate($itemsPerPage);
                 $fractalCollection = new Collection($paginator->getCollection(), $this->transformerInstance);
                 $fractalCollection->setPaginator(new IlluminatePaginatorAdapter($paginator));
                 break;
@@ -800,7 +555,7 @@ abstract class NetworkController extends BaseController
     /**
      * Select an entry from the database, using the provided id or slug (if the model is slug-able)
      *
-     * @param  int|string  $id
+     * @param int|string $id
      * @return Model
      */
     protected function getByIdOrSlug(int|string $id): Model
@@ -818,8 +573,8 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a single item from the current model after a GET request
      *
-     * @param  Request  $request
-     * @param  int|string  $id
+     * @param Request $request
+     * @param int|string $id
      * @return JsonResponse
      */
     public function show(Request $request, int|string $id): JsonResponse
@@ -840,7 +595,7 @@ abstract class NetworkController extends BaseController
     /**
      * Retrieves the translations for the given model by ID or slug.
      *
-     * @param  int|string  $id
+     * @param int|string $id
      *
      * @return JsonResponse
      */
@@ -864,7 +619,7 @@ abstract class NetworkController extends BaseController
     /**
      * Attempt to recover a deleted object, based on the current request
      *
-     * @param  Request  $request
+     * @param Request $request
      * @return Model|null
      */
     private function recoverDeletedObject(Request $request): ?Model
@@ -892,7 +647,7 @@ abstract class NetworkController extends BaseController
      * Check if resolved objects are provided in Store or Update requests and use the defined relations
      * to set the foreign key values of the current model
      *
-     * @param  Request  $request
+     * @param Request $request
      */
     protected function handleStoreUpdateResolvedRelations(Request $request): void
     {
@@ -935,7 +690,7 @@ abstract class NetworkController extends BaseController
      * Inserts an item from the current model after a POST request
      * Will attempt to recover deleted items
      *
-     * @param  Request  $request
+     * @param Request $request
      *
      * @return JsonResponse
      */
@@ -981,8 +736,8 @@ abstract class NetworkController extends BaseController
     /**
      * Updates an item from the current model after a PUT/PATCH request
      *
-     * @param  Request  $request
-     * @param  int  $id
+     * @param Request $request
+     * @param int $id
      * @return JsonResponse
      */
     public function update(Request $request, int $id): JsonResponse
@@ -1024,7 +779,7 @@ abstract class NetworkController extends BaseController
     /**
      * Deletes an item from the current model after a DELETE request
      *
-     * @param  int|string  $id
+     * @param int|string $id
      *
      * @return JsonResponse
      * @throws Exception
@@ -1044,8 +799,8 @@ abstract class NetworkController extends BaseController
      * Validates the input when inserting/updating.
      * All models should override this method
      *
-     * @param  Request  $request
-     * @param  int|null  $id
+     * @param Request $request
+     * @param int|null $id
      */
     protected abstract function validateInput(Request $request, int $id = NULL);
 }

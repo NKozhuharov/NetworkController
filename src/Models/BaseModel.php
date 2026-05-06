@@ -16,15 +16,6 @@ abstract class BaseModel extends Model
     const F_UPDATED_AT = self::UPDATED_AT;
     const F_DELETED_AT = 'deleted_at';
 
-    const CAST_TIMESTAMP = 'timestamp';
-    const CAST_ARRAY = 'array';
-
-    const QUERYABLE_RELATED = 'related';
-    const QUERYABLE_LEFT_MATCH = NetworkController::FILTER_LEFT_MATCH;
-    const QUERYABLE_RIGHT_MATCH = NetworkController::FILTER_RIGHT_MATCH;
-    const QUERYABLE_FULL_MATCH = NetworkController::FILTER_FULL_MATCH;
-
-
     /**
      * The attributes that can be used for ordering a collection
      * Define fields that support sorting in ascending or descending order

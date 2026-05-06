@@ -184,7 +184,7 @@ class QueryFilterService
                 break;
 
             default:
-                $builder->where($condition->column, $condition->operator->value, $condition->value);
+                $builder->where($condition->column, $condition->operator->toQueryOperator(), $condition->value);
                 break;
         }
     }

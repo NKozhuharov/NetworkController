@@ -168,7 +168,15 @@ Allowed relation filter operator values are:
 - `has` - has the specified relation
 - `doesnthave` - doesn't have the specified relation
 
-##### Filters meta information
+##### Filtering by Date
+
+The accepted format is YYYY-MM-DD.
+
+##### Filtering booleans
+
+`true` and `false` are not supported. Use `1` and `0` instead.
+
+##### Filter meta-information
 
 All available fields, which can be used for filtering, are available in the `meta.route_info`parameter `filters`:
 

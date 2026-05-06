@@ -10,15 +10,14 @@ class QueryFilterService
 {
     public function __construct(protected TranslationService $translationService)
     {
-
     }
 
-    public function applyFilters(
-        Builder   $builder,
-        BaseModel $model,
-        array     $filters
-    ): Builder {
-        foreach ($this->groupFiltersByPath($this->normalizeFilters($filters)) as $path => $conditions) {
+    public function applyFilters(Builder $builder, BaseModel $model, array $filters): Builder
+    {
+        [$relationFilters, $columnFilters] = $this->splitFilters($this->normalizeFilters($filters));
+
+        // 1. COLUMN PATH FILTERS (recursive whereHas)
+        foreach ($this->groupFiltersByPath($columnFilters) as $path => $conditions) {
             $segments = $path === '' ? [] : explode('.', $path);
 
             $this->applyGroupedNestedFilter(
@@ -29,7 +28,40 @@ class QueryFilterService
             );
         }
 
+        // 2. RELATION FILTERS (has / doesntHave)
+        foreach ($relationFilters as $filter) {
+            $this->applyRelationFilter(
+                $model,
+                $builder,
+                $filter->column,
+                $filter->operator,
+                $filter->value,
+            );
+        }
+
         return $builder;
+    }
+
+    /**
+     * SPLIT relation vs column filters
+     * @param array<FilterCondition> $filters
+     * @return array
+     */
+    protected function splitFilters(array $filters): array
+    {
+        $relation = [];
+        $columns = [];
+
+        foreach ($filters as $filter) {
+            if ($filter->isRelationFilter()) {
+                $relation[] = $filter;
+                continue;
+            }
+
+            $columns[] = $filter;
+        }
+
+        return [$relation, $columns];
     }
 
     protected function normalizeFilters(array $filters): array
@@ -39,11 +71,7 @@ class QueryFilterService
         foreach ($filters as $filterKey => $filterValue) {
             // simple case: filters[key]=value
             if (!is_array($filterValue)) {
-                $result[] = [
-                    'key'      => $filterKey,
-                    'operator' => '=',
-                    'value'    => $filterValue,
-                ];
+                $result[] = new FilterCondition($filterKey, FilterOperators::EQUALS, $filterValue);
                 continue;
             }
 
@@ -55,54 +83,36 @@ class QueryFilterService
                 }
 
                 if (in_array($requestOperator, [FilterOperators::FILTER_HAS, FilterOperators::FILTER_DOESNT_HAVE], true)) {
-                    $result[] = [
-                        'key'      => $filterKey,
-                        'operator' => $requestOperator->value,
-                        'value'    => $value,
-                    ];
+                    $result[] = new FilterCondition($filterKey, $requestOperator, $value);
                     continue 2;
                 }
                 if (in_array($requestOperator, [FilterOperators::FILTER_FULL_MATCH, FilterOperators::FILTER_RIGHT_MATCH, FilterOperators::FILTER_LEFT_MATCH], true)) {
                     $value = $this->getFilterLikeSearchWordValue($value, $requestOperator);
                 }
 
-                $operator = $requestOperator->toQueryOperator();
 
-                $result[] = [
-                    'key'      => $filterKey,
-                    'operator' => $operator,
-                    'value'    => $value,
-                ];
+                $result[] = new FilterCondition($filterKey, $requestOperator, $value,);
             }
         }
 
         return $result;
     }
 
+    /**
+     * @param array<FilterCondition> $filters
+     * @return array
+     */
     protected function groupFiltersByPath(array $filters): array
     {
         $grouped = [];
 
         foreach ($filters as $filter) {
-            // HAS / DOESNT_HAVE are special → no grouping
-            if (in_array($filter['operator'], [
-                FilterOperators::FILTER_HAS->value,
-                FilterOperators::FILTER_DOESNT_HAVE->value
-            ], true)) {
-                $grouped['__relations'][] = $filter;
-                continue;
-            }
-
-            $segments = explode('.', $filter['key']);
+            $segments = explode('.', $filter->column);
 
             $column = array_pop($segments);
             $path = implode('.', $segments);
 
-            $grouped[$path][] = [
-                'column'   => $column,
-                'operator' => $filter['operator'],
-                'value'    => $filter['value'],
-            ];
+            $grouped[$path][] = new FilterCondition($column, $filter->operator, $filter->value);
         }
 
         return $grouped;
@@ -117,13 +127,13 @@ class QueryFilterService
         // FINAL level → apply all conditions together
         if (empty($segments)) {
             foreach ($conditions as $condition) {
-                if (!in_array($condition['column'], $model->getFilterable(), true)) {
+                if (!in_array($condition->column, $model->getFilterable(), true)) {
                     continue;
                 }
 
                 $this->translationService->joinTranslationModelTableIfNecessary(
                     $model,
-                    $condition['column'],
+                    $condition->column,
                     $builder
                 );
 
@@ -157,28 +167,24 @@ class QueryFilterService
         });
     }
 
-    protected function applyCondition($model, $builder, array $condition): void
+    protected function applyCondition($model, $builder, FilterCondition $condition): void
     {
-        $column = $condition['column'];
-        $operator = $condition['operator'];
-        $value = $condition['value'];
-
-        switch ($operator) {
-            case 'IN':
-                $builder->whereIn($column, $value);
+        switch ($condition->operator) {
+            case FilterOperators::FILTER_IN:
+                $builder->whereIn($condition->column, $condition->value);
                 break;
 
-            case 'NOT IN':
-                $builder->whereNotIn($column, $value);
+            case FilterOperators::FILTER_NOT_IN:
+                $builder->whereNotIn($condition->column, $condition->value);
                 break;
 
-            case FilterOperators::FILTER_HAS->value:
-            case FilterOperators::FILTER_DOESNT_HAVE->value:
-                $this->applyRelationFilter($model, $builder, $column, $value, $operator);
+            case FilterOperators::FILTER_HAS:
+            case FilterOperators::FILTER_DOESNT_HAVE:
+                $this->applyRelationFilter($model, $builder, $condition->column, $condition->value, $condition->operator);
                 break;
 
             default:
-                $builder->where($column, $operator, $value);
+                $builder->where($condition->column, $condition->operator->value, $condition->value);
                 break;
         }
     }
@@ -189,40 +195,39 @@ class QueryFilterService
      * @param BaseModel $model
      * @param mixed $builder The query builder instance that will be modified.
      * @param string $relation The name of the relation to filter.
-     * @param string|null $filterValue The value used for filtering the results in the specified relation.
-     * @param string $filterOperator The operator defining the type of filter to apply (e.g., has or does not have the relation).
+     * @param FilterOperators $filterOperator The operator defining the type of filter to apply (e.g., has or does not have the relation).
+     * @param mixed $filterValue The value used for filtering the results in the specified relation.
      *
      * @return void
      */
-    protected function applyRelationFilter(BaseModel $model, mixed &$builder, string $relation, string|null $filterValue, string $filterOperator): void
+    protected function applyRelationFilter(BaseModel $model, mixed &$builder, string $relation, FilterOperators $filterOperator, mixed $filterValue): void
     {
         if (!in_array($relation, $model->getFillableRelations(), TRUE)) {
             return;
         }
 
-        switch ($filterOperator) {
-            case FilterOperators::FILTER_HAS->value:
-                if (empty($filterValue)) {
-                    $builder->whereHas($relation);
-                    return;
-                }
-
-                $builder->whereHas($relation, function ($innerBuilder) use ($model, $relation, $filterValue) {
-                    $innerBuilder->where($model->{$relation}()->getRelated()->getTable() . '.' . $model->{$relation}()->getRelated()->getKeyName(), $filterValue);
-                });
-
+        if ($filterOperator === FilterOperators::FILTER_HAS) {
+            if (empty($filterValue)) {
+                $builder->whereHas($relation);
                 return;
-            case FilterOperators::FILTER_DOESNT_HAVE->value:
-                if (empty($filterValue)) {
-                    $builder->whereDoesntHave($relation);
-                    return;
-                }
+            }
 
-                $builder->whereDoesntHave($relation, function ($innerBuilder) use ($model, $relation, $filterValue) {
-                    $innerBuilder->where($model->{$relation}()->getRelated()->getTable() . '.' . $model->{$relation}()->getRelated()->getKeyName(), $filterValue);
-                });
+            $builder->whereHas($relation, function ($innerBuilder) use ($model, $relation, $filterValue) {
+                $innerBuilder->where($model->{$relation}()->getRelated()->getTable() . '.' . $model->{$relation}()->getRelated()->getKeyName(), $filterValue);
+            });
 
+            return;
+        }
+
+        if ($filterOperator === FilterOperators::FILTER_DOESNT_HAVE) {
+            if (empty($filterValue)) {
+                $builder->whereDoesntHave($relation);
                 return;
+            }
+
+            $builder->whereDoesntHave($relation, function ($innerBuilder) use ($model, $relation, $filterValue) {
+                $innerBuilder->where($model->{$relation}()->getRelated()->getTable() . '.' . $model->{$relation}()->getRelated()->getKeyName(), $filterValue);
+            });
         }
     }
 

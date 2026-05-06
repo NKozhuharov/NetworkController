@@ -8,20 +8,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Query\JoinClause;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
-use Illuminate\Support\Facades\DB;
 use League\Fractal\Pagination\IlluminatePaginatorAdapter;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Resource\Item;
 use League\Fractal\Resource\ResourceAbstract;
 use League\Fractal\TransformerAbstract;
-use Nevestul4o\NetworkController\Models\BaseModel;
 use Nevestul4o\NetworkController\Filters\FilterOperators;
 use Nevestul4o\NetworkController\Filters\QueryFilterService;
+use Nevestul4o\NetworkController\Models\BaseModel;
 use Nevestul4o\NetworkController\Traits\AuthorizeRequest;
 use Nevestul4o\NetworkController\Transformers\Interface\NestedIncludesTransformer as NestedIncludesInterface;
 use Nevestul4o\NetworkController\Translation\TranslationService;
@@ -177,8 +175,7 @@ abstract class NetworkController extends BaseController
     public function __construct(
         protected QueryFilterService $filterService,
         protected TranslationService $translationService,
-    )
-    {
+    ) {
         if (empty($this->modelClass)) {
             throw new Exception("Define a model class in order to use NetworkController");
         }
@@ -204,21 +201,21 @@ abstract class NetworkController extends BaseController
 
         $this->responseHelper = new JsonResponseHelper();
 
-        $this->orderAble           = $this->model->getOrderAble();
-        $this->filterAble          = $this->model->getFilterAble();
+        $this->orderAble = $this->model->getOrderAble();
+        $this->filterAble = $this->model->getFilterAble();
         $this->filterAbleRelations = $this->model->getFillableRelations();
-        $this->resolveAble         = $this->model->getResolveAble();
+        $this->resolveAble = $this->model->getResolveAble();
         foreach ($this->resolveAble as $relation) {
             if (!str_contains($relation, '.') && !method_exists($this->model, $relation)) {
                 throw new Exception("Create a `$relation()` method to define relation in $this->modelClass");
             }
         }
-        $this->queryAble     = $this->model->getQueryAble();
+        $this->queryAble = $this->model->getQueryAble();
         $this->aggregateAble = $this->model->getAggregateAble();
 
         $approvedResolve = [];
-        $nestedResolve   = [];
-        $resolve         = array_merge($this->defaultResolve, request()->array(self::RESOLVE_PARAM));
+        $nestedResolve = [];
+        $resolve = array_merge($this->defaultResolve, request()->array(self::RESOLVE_PARAM));
         if (!empty($resolve)) {
             foreach ($resolve as $resolveValue) {
                 if (str_contains($resolveValue, '.')) {
@@ -261,7 +258,7 @@ abstract class NetworkController extends BaseController
      * Searches the request for 'limit' parameter;
      * If it's available, overrides the default itemsPerPage property value
      *
-     * @param  Request  $request
+     * @param Request $request
      * @return int|string
      */
     protected function getItemsPerPageFromRequest(Request $request): int|string
@@ -272,8 +269,8 @@ abstract class NetworkController extends BaseController
             return $this->itemsPerPage;
         }
 
-        if (is_numeric($itemsPerPage) && (int) $itemsPerPage > 0) {
-            return (int) $itemsPerPage;
+        if (is_numeric($itemsPerPage) && (int)$itemsPerPage > 0) {
+            return (int)$itemsPerPage;
         }
 
         $itemsPerPage = strtolower($itemsPerPage);
@@ -288,8 +285,8 @@ abstract class NetworkController extends BaseController
      * Applies a query filter to the given query builder based on the request parameters.
      * Filters are applied to queryable columns, including handling related models and translatable attributes.
      *
-     * @param  mixed  $builder  The query builder instance to modify.
-     * @param  Request  $request  The HTTP request containing query parameters.
+     * @param mixed $builder The query builder instance to modify.
+     * @param Request $request The HTTP request containing query parameters.
      *
      * @return void
      */
@@ -312,7 +309,7 @@ abstract class NetworkController extends BaseController
                 foreach ($this->queryAble as $column => $operators) {
                     //if the column is numeric, there is no explicit operator set, use the default %% operator
                     if (is_numeric($column)) {
-                        $column    = $operators;
+                        $column = $operators;
                         $operators = FilterOperators::FILTER_FULL_MATCH;
                     }
                     if (method_exists($this->model, $column) && in_array($column, $this->model->getWith())) {
@@ -324,7 +321,7 @@ abstract class NetworkController extends BaseController
                                     function ($q) use ($relatedQueryableKey, $relatedQueryableOperators, $queryWord) {
                                         $q->whereTranslationLike(
                                             $relatedQueryableKey,
-                                            $this->filterService->getFilterLikeSearchWordValue($queryWord, $relatedQueryableOperators)
+                                            $this->filterService->getFilterLikeSearchWordValue($queryWord, FilterOperators::from($relatedQueryableOperators))
                                         );
                                     }
                                 );
@@ -337,16 +334,18 @@ abstract class NetworkController extends BaseController
                                     $q->where(
                                         $relatedQueryableKey,
                                         'LIKE',
-                                        $this->filterService->getFilterLikeSearchWordValue($queryWord, $relatedQueryableOperators)
+                                        $this->filterService->getFilterLikeSearchWordValue($queryWord, FilterOperators::from($relatedQueryableOperators))
                                     );
                                 }
                             );
                         }
-                    } elseif (!in_array($column, $this->resolveAble)) {
+                        continue;
+                    }
+                    if (!in_array($column, $this->resolveAble)) {
                         $query->orWhere(
                             $column,
                             'LIKE',
-                            $this->filterService->getFilterLikeSearchWordValue($queryWord, $operators)
+                            $this->filterService->getFilterLikeSearchWordValue($queryWord, FilterOperators::from($operators))
                         );
                     }
                 }
@@ -357,12 +356,12 @@ abstract class NetworkController extends BaseController
      * Applies orderBy clause to the provided builder, by using the provided sort and order by options.
      * Supports related models, one level deep.
      *
-     * @param  mixed  $builder
-     * @param  Request  $request
+     * @param mixed $builder
+     * @param Request $request
      */
     protected function applySortAndOrderFromRequest(mixed &$builder, Request $request): void
     {
-        $sort    = $request->get(self::SORT_PARAM);
+        $sort = $request->get(self::SORT_PARAM);
         $orderBy = $request->get(self::ORDER_BY_PARAM);
 
         $sort = ($sort && is_string($sort)) ? trim(strtolower($sort)) : $this->defaultSort;
@@ -405,12 +404,12 @@ abstract class NetworkController extends BaseController
                 $orderByInnerQuery = $relation->getRelated();
                 $this->translationService->joinTranslationModelTableIfNecessary($relation->getRelated(), $orderBy[1], $orderByInnerQuery);
 
-                $tableName      = $orderByInnerQuery->getModel()->getTable();
-                $ownerKeyName   = $relation->getQualifiedOwnerKeyName();
+                $tableName = $orderByInnerQuery->getModel()->getTable();
+                $ownerKeyName = $relation->getQualifiedOwnerKeyName();
                 $foreignKeyName = $relation->getQualifiedForeignKeyName();
 
                 if ($tableName === $this->model->getTable()) {
-                    $tableName    .= ' as inner_table';
+                    $tableName .= ' as inner_table';
                     $ownerKeyName = 'inner_table.' . $relation->getOwnerKeyName();
                 }
 
@@ -439,8 +438,8 @@ abstract class NetworkController extends BaseController
      * Supports a variety of filter types, including comparison operators,
      * inclusion and exclusion conditions, and relation-based filters.
      *
-     * @param  mixed  $builder  The query builder to which the filters will be applied.
-     * @param  Request  $request  The current HTTP request containing filter parameters.
+     * @param mixed $builder The query builder to which the filters will be applied.
+     * @param Request $request The current HTTP request containing filter parameters.
      *
      * @return void
      */
@@ -458,7 +457,7 @@ abstract class NetworkController extends BaseController
     /**
      * Populates the meta-property of the fractal resource
      *
-     * @param  ResourceAbstract  $resource
+     * @param ResourceAbstract $resource
      * @return void
      */
     protected function setFractalResourceMetaValue(ResourceAbstract $resource): void
@@ -484,7 +483,7 @@ abstract class NetworkController extends BaseController
     /**
      * Initialize the builder for the 'index' function. Allows custom logic.
      *
-     * @param  Request  $request
+     * @param Request $request
      * @return Builder|BaseModel
      */
     protected function getIndexQueryBuilder(Request $request): Builder|BaseModel
@@ -495,7 +494,7 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a collection of items from the current model after a GET request
      *
-     * @param  Request  $request
+     * @param Request $request
      *
      * @return JsonResponse
      * @throws Exception
@@ -524,7 +523,7 @@ abstract class NetworkController extends BaseController
                 $fractalCollection = new Collection($builder->get(), $this->transformerInstance);
                 break;
             default:
-                $paginator         = $builder->paginate($itemsPerPage);
+                $paginator = $builder->paginate($itemsPerPage);
                 $fractalCollection = new Collection($paginator->getCollection(), $this->transformerInstance);
                 $fractalCollection->setPaginator(new IlluminatePaginatorAdapter($paginator));
                 break;
@@ -556,7 +555,7 @@ abstract class NetworkController extends BaseController
     /**
      * Select an entry from the database, using the provided id or slug (if the model is slug-able)
      *
-     * @param  int|string  $id
+     * @param int|string $id
      * @return Model
      */
     protected function getByIdOrSlug(int|string $id): Model
@@ -574,8 +573,8 @@ abstract class NetworkController extends BaseController
     /**
      * Returns a single item from the current model after a GET request
      *
-     * @param  Request  $request
-     * @param  int|string  $id
+     * @param Request $request
+     * @param int|string $id
      * @return JsonResponse
      */
     public function show(Request $request, int|string $id): JsonResponse
@@ -596,7 +595,7 @@ abstract class NetworkController extends BaseController
     /**
      * Retrieves the translations for the given model by ID or slug.
      *
-     * @param  int|string  $id
+     * @param int|string $id
      *
      * @return JsonResponse
      */
@@ -620,7 +619,7 @@ abstract class NetworkController extends BaseController
     /**
      * Attempt to recover a deleted object, based on the current request
      *
-     * @param  Request  $request
+     * @param Request $request
      * @return Model|null
      */
     private function recoverDeletedObject(Request $request): ?Model
@@ -648,7 +647,7 @@ abstract class NetworkController extends BaseController
      * Check if resolved objects are provided in Store or Update requests and use the defined relations
      * to set the foreign key values of the current model
      *
-     * @param  Request  $request
+     * @param Request $request
      */
     protected function handleStoreUpdateResolvedRelations(Request $request): void
     {
@@ -691,7 +690,7 @@ abstract class NetworkController extends BaseController
      * Inserts an item from the current model after a POST request
      * Will attempt to recover deleted items
      *
-     * @param  Request  $request
+     * @param Request $request
      *
      * @return JsonResponse
      */
@@ -737,8 +736,8 @@ abstract class NetworkController extends BaseController
     /**
      * Updates an item from the current model after a PUT/PATCH request
      *
-     * @param  Request  $request
-     * @param  int  $id
+     * @param Request $request
+     * @param int $id
      * @return JsonResponse
      */
     public function update(Request $request, int $id): JsonResponse
@@ -780,7 +779,7 @@ abstract class NetworkController extends BaseController
     /**
      * Deletes an item from the current model after a DELETE request
      *
-     * @param  int|string  $id
+     * @param int|string $id
      *
      * @return JsonResponse
      * @throws Exception
@@ -800,8 +799,8 @@ abstract class NetworkController extends BaseController
      * Validates the input when inserting/updating.
      * All models should override this method
      *
-     * @param  Request  $request
-     * @param  int|null  $id
+     * @param Request $request
+     * @param int|null $id
      */
     protected abstract function validateInput(Request $request, int $id = NULL);
 }

@@ -86,12 +86,14 @@ class QueryFilterService
                     $result[] = new FilterCondition($filterKey, $requestOperator, $value);
                     continue 2;
                 }
+
                 if (in_array($requestOperator, [FilterOperators::FILTER_FULL_MATCH, FilterOperators::FILTER_RIGHT_MATCH, FilterOperators::FILTER_LEFT_MATCH], true)) {
                     $value = $this->getFilterLikeSearchWordValue($value, $requestOperator);
+                } elseif (in_array($requestOperator, [FilterOperators::FILTER_IN, FilterOperators::FILTER_NOT_IN])) {
+                    $value = explode(',', $value);
                 }
 
-
-                $result[] = new FilterCondition($filterKey, $requestOperator, $value,);
+                $result[] = new FilterCondition($filterKey, $requestOperator, $value);
             }
         }
 
@@ -171,11 +173,21 @@ class QueryFilterService
     {
         switch ($condition->operator) {
             case FilterOperators::FILTER_IN:
-                $builder->whereIn($condition->column, $condition->value);
+                $column = $condition->column;
+                if ($column === 'id') {
+                    $column = $model->getQualifiedKeyName();
+                }
+
+                $builder->whereIn($column, $condition->value);
                 break;
 
             case FilterOperators::FILTER_NOT_IN:
-                $builder->whereNotIn($condition->column, $condition->value);
+                $column = $condition->column;
+                if ($column === 'id') {
+                    $column = $model->getQualifiedKeyName();
+                }
+
+                $builder->whereNotIn($column, $condition->value);
                 break;
 
             case FilterOperators::FILTER_HAS:

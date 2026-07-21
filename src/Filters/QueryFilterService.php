@@ -88,6 +88,9 @@ class QueryFilterService
                 }
 
                 if (in_array($requestOperator, [FilterOperators::FILTER_FULL_MATCH, FilterOperators::FILTER_RIGHT_MATCH, FilterOperators::FILTER_LEFT_MATCH], true)) {
+                    if (empty($value)) {
+                        continue;
+                    }
                     $value = $this->getFilterLikeSearchWordValue($value, $requestOperator);
                 } elseif (in_array($requestOperator, [FilterOperators::FILTER_IN, FilterOperators::FILTER_NOT_IN])) {
                     $value = explode(',', $value);

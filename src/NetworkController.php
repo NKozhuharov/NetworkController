@@ -263,7 +263,7 @@ abstract class NetworkController extends BaseController
      */
     protected function getItemsPerPageFromRequest(Request $request): int|string
     {
-        $itemsPerPage = $request->get(self::LIMIT_PARAM);
+        $itemsPerPage = $request->input(self::LIMIT_PARAM);
 
         if (empty($itemsPerPage)) {
             return $this->itemsPerPage;
@@ -292,8 +292,8 @@ abstract class NetworkController extends BaseController
      */
     protected function applyQueryFromRequest(mixed &$builder, Request $request): void
     {
-        $queryWord = $request->get(self::QUERY_PARAM);
-        if (!is_string($queryWord) || empty($queryWord) || empty($this->queryAble)) {
+        $queryWord = $request->string(self::QUERY_PARAM)->toString();
+        if (empty($queryWord) || empty($this->queryAble)) {
             return;
         }
 
@@ -361,15 +361,14 @@ abstract class NetworkController extends BaseController
      */
     protected function applySortAndOrderFromRequest(mixed &$builder, Request $request): void
     {
-        $sort = $request->get(self::SORT_PARAM);
-        $orderBy = $request->get(self::ORDER_BY_PARAM);
+        $sort = $request->string(self::SORT_PARAM)->trim()->lower()->toString();
+        $orderBy = $request->string(self::ORDER_BY_PARAM)->trim()->toString();
 
-        $sort = ($sort && is_string($sort)) ? trim(strtolower($sort)) : $this->defaultSort;
-        if ($sort !== self::SORT_ASC && $sort !== self::SORT_DESC) {
+        if (!in_array($sort, [self::SORT_ASC, self::SORT_DESC], true)) {
             $sort = $this->defaultSort;
         }
 
-        $orderBy = ($orderBy && is_string($orderBy)) ? trim(strtolower($orderBy)) : $this->defaultOrder;
+        $orderBy = $orderBy ?: $this->defaultOrder;
 
         if (in_array($orderBy, $this->orderAble)) {
             if ($this->model->isTranslatable() && $this->model->isTranslationAttribute($orderBy)) {
@@ -507,9 +506,9 @@ abstract class NetworkController extends BaseController
         $this->applySortAndOrderFromRequest($builder, $request);
         $this->applyFiltersFromRequest($builder, $request);
 
-        if ($request->get(self::WITH_DELETED) && $this->model->hasSoftDeletes()) {
+        if ($request->boolean(self::WITH_DELETED) && $this->model->hasSoftDeletes()) {
             $builder = $builder->withTrashed();
-        } elseif ($request->get(self::ONLY_DELETED) && $this->model->hasSoftDeletes()) {
+        } elseif ($request->boolean(self::ONLY_DELETED) && $this->model->hasSoftDeletes()) {
             $builder = $builder->onlyTrashed();
         }
 

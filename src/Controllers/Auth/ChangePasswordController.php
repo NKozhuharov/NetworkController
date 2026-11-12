@@ -57,7 +57,7 @@ class ChangePasswordController extends Controller
             ]
         );
 
-        if ($request->get(User::F_PASSWORD) !== $request->get(self::F_PASSWORD_CONFIRMATION)) {
+        if ($request->string(User::F_PASSWORD) !== $request->string(self::F_PASSWORD_CONFIRMATION)) {
             throw ValidationException::withMessages([self::F_PASSWORD_CONFIRMATION => trans('auth.wrong_password_confirmation')]);
         }
 

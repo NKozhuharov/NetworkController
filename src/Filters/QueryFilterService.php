@@ -255,10 +255,12 @@ class QueryFilterService
      */
     public function getFilterLikeSearchWordValue(string $searchWord, FilterOperators $operator): string
     {
+        $searchWord = addcslashes(mb_strtolower($searchWord), '%_\\');
+
         return match ($operator) {
-            FilterOperators::FILTER_RIGHT_MATCH => mb_strtolower($searchWord) . '%',
-            FilterOperators::FILTER_LEFT_MATCH => '%' . mb_strtolower($searchWord),
-            default => '%' . mb_strtolower($searchWord) . '%',
+            FilterOperators::FILTER_RIGHT_MATCH => $searchWord . '%',
+            FilterOperators::FILTER_LEFT_MATCH => '%' . $searchWord,
+            default => '%' . $searchWord . '%',
         };
     }
 }
